@@ -1,6 +1,6 @@
 # REEBJAI Smart Convenience Store Checkout
 
-ระบบร้านสะดวกซื้อแบบ self-checkout ที่ลูกค้าสามารถสแกนสินค้าและจ่ายเงินผ่านแอปมือถือ โดยไม่ต้องผ่านแคชเชียร์
+ระบบร้านสะดวกซื้อแบบ self-checkout ที่ลูกค้าสามารถสแกนสินค้าและจ่ายเงินผ่านแอปมือถือ โดยไม่ต้องผ่านแคชเชียร์ พร้อมระบบ Web Admin Panel สำหรับจัดการสาขาร้าน สต๊อกสินค้า พิมพ์บาร์โค้ด และดูยอดเงิน
 
 ขั้นตอนหลัก คือ ลูกค้าสแกน QR Code เข้าร้าน จากนั้นประตูจะเปิดให้เข้า จากนั้นสแกนบาร์โค้ดสินค้าใส่ตะกร้าในแอป จ่ายเงินผ่านแอป แล้วประตูจะเปิดให้ออก
 
@@ -34,6 +34,7 @@
 Android Studio จำเป็นต้องติดตั้งเพราะมี Android SDK, Emulator และเครื่องมือ build ที่ Flutter ต้องใช้ แม้จะเขียนโค้ดใน VS Code ก็ยังต้องมี Android Studio อยู่ดี
 
 
+## สิ่งที่ต้องติดตั้งก่อนใช้งาน
 
 ด้านล่างนี้เป็นรายละเอียดการติดตั้งทั้งฝั่ง Flutter (แอปมือถือ) และฝั่ง ESP32 (ฮาร์ดแวร์ประตู)
 
@@ -125,11 +126,53 @@ class StripeConfig {
 ถ้ายังไม่ใส่ Stripe key ระบบจะ mock payment โดยจ่ายสำเร็จอัตโนมัติ เพื่อให้ทดสอบ flow ได้
 
 
+## Web Admin Panel (ระบบจัดการร้านและสินค้าผ่านเว็บ)
+
+โปรเจกต์นี้มีระบบเว็บสำหรับผู้ดูแลร้าน (Admin) พัฒนาด้วย HTML, JavaScript และเชื่อมต่อตรงกับ Firebase Firestore โดยไม่ต้องรันเซิร์ฟเวอร์แยก สามารถเปิดใช้งานในเครื่องหรือ Deploy ขึ้น Vercel ได้ทันที
+
+### ความสามารถของระบบ Web Admin
+
+1. ระบบจัดการสาขาร้าน (Store Management)
+- เพิ่มสาขาใหม่ โดยระบุชื่อร้าน ที่อยู่ และรหัส QR Code ID
+- ระบบจะสร้าง QR Code ของสาขาให้อัตโนมัติ
+- สามารถกดสั่งพิมพ์ QR Code เพื่อนำไปติดที่หน้าประตูทางเข้าร้านได้ทันที
+- ดูรายการสาขาทั้งหมด พร้อมปุ่มเข้าไปจัดการสต๊อกสินค้าและดูยอดเงินของแต่ละสาขา
+
+2. ระบบจัดการสินค้าและสต๊อก (Inventory Manager)
+- เพิ่มสินค้าใหม่เข้าสาขา โดยเลือกหมวดหมู่ (อาหารแช่แข็ง เครื่องดื่ม ขนมขบเคี้ยว)
+- กำหนดบาร์โค้ด ชื่อสินค้า ราคาขาย ต้นทุน จำนวนสต๊อก วันหมดอายุ และหน่วยนับ
+- ระบบจะสร้างบาร์โค้ดสินค้า (Barcode Catalog) ให้อัตโนมัติ
+- มีปุ่มสั่งพิมพ์บาร์โค้ด เพื่อนำไปแปะบนสินค้าจริงสำหรับให้ลูกค้าสแกนในแอป
+- จัดการแก้ไขสต๊อก ลบสินค้า และอัปเดตข้อมูลแบบ Real-time ลง Firestore
+
+3. ระบบตรวจสอบการชำระเงิน (Payments History)
+- ดูประวัติรายการคำสั่งซื้อของแต่ละสาขา
+- ตรวจสอบยอดเงิน และสถานะการชำระเงินของลูกค้า
+
+### ไฟล์หน้าเว็บในโฟลเดอร์ assets/
+
+- assets/index.html หน้ารวมเมนูหลักและ Login
+- assets/store-stock.html หน้าระบบจัดการสาขาและสต๊อกสินค้า
+- assets/qr-barcode.html หน้าสร้างและพิมพ์ QR Code ร้าน และบาร์โค้ดสินค้า
+- assets/payments.html หน้าตรวจสอบรายการชำระเงิน
+
+### วิธีนำ Web Admin ขึ้น Vercel (Deploy to Vercel)
+
+1. เข้าเว็บไซต์ Vercel แล้วเลือก Import Git Repository ของโปรเจกต์นี้
+2. ในหน้าตั้งค่าโปรเจกต์ (Project Settings)
+- ตรงส่วน Root Directory ให้กด Edit แล้วระบุเป็น assets แล้วกด Save
+- ตรงส่วน Build and Output Settings ในช่อง Framework Preset ให้เลือกเป็น Other
+- ช่อง Build Command ให้เว้นว่างไว้ (ไม่ต้องใส่คำสั่ง build)
+3. กด Deploy เพื่อเริ่มการทำงาน
+4. เมื่อ Deploy สำเร็จ จะได้ URL เว็บไซต์สำหรับเปิดใช้งานระบบจัดการร้านและพิมพ์บาร์โค้ดได้ทันที
+
+
 ## ภาพรวมระบบ
 
 | ส่วน | เทคโนโลยี | หน้าที่ |
 |------|-----------|--------|
 | Flutter App | Flutter + Firebase | แอปลูกค้า สำหรับลงทะเบียน สแกน QR และ Barcode จ่ายเงิน |
+| Web Admin | HTML + JS + Firestore | เว็บจัดการร้าน เพิ่มสินค้า สร้างและพิมพ์ QR/Barcode ดูยอดเงิน |
 | Cloud Firestore | Firestore | ฐานข้อมูลหลัก เก็บข้อมูลร้าน สินค้า session payment receipt |
 | Firebase RTDB | Realtime Database | สั่ง ESP32 แบบ real-time เช่น เปิดประตู alarm แสดงข้อความ LCD |
 | ESP32 Gate | ESP32 ตัวเดียว | ควบคุมประตู เปิดปิด 2 ครั้ง (เข้าและออก) ไฟ LED Buzzer LCD BLE |
@@ -219,12 +262,12 @@ ESP32 ทำงานดังนี้
 Firestore แบ่งเป็น collection หลักๆ ดังนี้
 
 - stores เก็บข้อมูลร้านแต่ละสาขา มี storeId ชื่อ ที่อยู่ และ qrCode สำหรับให้ลูกค้าสแกน
-- products เก็บข้อมูลสินค้า มี barcode ชื่อ ราคา stock ปัจจุบันสินค้าแชร์ทุกสาขา
+- products เก็บข้อมูลสินค้า มี barcode ชื่อ ราคา stock
 - sessions เก็บข้อมูล session ของลูกค้าแต่ละครั้ง มี userId storeId และ status
 
 ### วิธีเพิ่มสาขาใหม่
 
-1. เพิ่มข้อมูลร้านในไฟล์ lib/core/seed/seed_data.dart
+1. เพิ่มข้อมูลร้านในไฟล์ lib/core/seed/seed_data.dart หรือเพิ่มผ่าน Web Admin Panel
 
 ```dart
 {
@@ -236,19 +279,19 @@ Firestore แบ่งเป็น collection หลักๆ ดังนี้
 },
 ```
 
-2. เพิ่มข้อมูลร้านในไฟล์ assets/qr-barcode.html เพื่อสร้าง QR Code
+2. เพิ่มข้อมูลร้านในไฟล์ assets/qr-barcode.html หรือสร้างผ่าน Web Admin Panel เพื่อสร้าง QR Code
 
 ```javascript
 { id: 'store_003', name: 'REEBJAI Store Silom', address: 'Silom Rd', qr: 'REEBJAI_STORE_003' },
 ```
 
-3. เปิดไฟล์ qr-barcode.html ในเบราว์เซอร์แล้วพิมพ์ QR Code ไปติดหน้าร้าน
+3. พิมพ์ QR Code ไปติดหน้าร้าน
 
-4. กดปุ่ม Seed ในแอป หรือเรียก SeedData.forceReseedAll() เพื่อ import ข้อมูลเข้า Firestore
+4. หากเพิ่มในโค้ด ให้กดปุ่ม Seed ในแอป หรือเรียก SeedData.forceReseedAll() เพื่อ import ข้อมูลเข้า Firestore
 
 ### วิธีเพิ่มสินค้าใหม่
 
-1. เพิ่มข้อมูลสินค้าในไฟล์ lib/core/seed/seed_data.dart
+1. เพิ่มข้อมูลสินค้าในไฟล์ lib/core/seed/seed_data.dart หรือเพิ่มผ่าน Web Admin Panel
 
 ```dart
 {
@@ -262,13 +305,13 @@ Firestore แบ่งเป็น collection หลักๆ ดังนี้
 },
 ```
 
-2. เพิ่มข้อมูลในไฟล์ assets/qr-barcode.html เพื่อสร้าง Barcode
+2. เพิ่มข้อมูลในไฟล์ assets/qr-barcode.html หรือสร้างผ่าน Web Admin Panel เพื่อสร้าง Barcode
 
 ```javascript
 { name: 'ชื่อสินค้าใหม่', barcode: '8850123456789', price: 25 },
 ```
 
-3. เปิดไฟล์ qr-barcode.html ในเบราว์เซอร์แล้วพิมพ์ Barcode ไปติดบนสินค้า
+3. พิมพ์ Barcode ไปติดบนสินค้า
 
 
 ## ESP32 Gate Controller
@@ -386,7 +429,7 @@ Barcode ต้องตรงกับ field barcode ใน Firestore collection
 
 ### วิธีสร้าง QR Code และ Barcode
 
-1. เปิดไฟล์ assets/qr-barcode.html ในเบราว์เซอร์
+1. เปิดผ่านระบบ Web Admin Panel หรือเปิดไฟล์ assets/qr-barcode.html ในเบราว์เซอร์
 2. QR Code และ Barcode ทุกตัวจะถูกสร้างอัตโนมัติ
 3. กดพิมพ์เพื่อนำไปใช้งาน
 
@@ -409,6 +452,7 @@ Barcode ต้องตรงกับ field barcode ใน Firestore collection
 | lib/services/board_provider.dart | สั่ง ESP32 และดูสถานะบอร์ด | แก้คำสั่ง ESP32 |
 | lib/services/board_command_service.dart | ส่งคำสั่งไป Firebase RTDB | แก้ format คำสั่ง |
 | lib/core/constants/stripe_config.dart | Stripe API keys | ใส่ key Stripe ของคุณ |
+| assets/store-stock.html | หน้า Web Admin จัดการร้านและสินค้า | แก้ระบบจัดการหลังบ้าน |
 | assets/qr-barcode.html | สร้าง QR Code และ Barcode สำหรับพิมพ์ | เพิ่มสาขาหรือสินค้า |
 | esp32_firmware/gate_controller/gate_controller.ino | โค้ด ESP32 ประตู | แก้ WiFi หรือ Firebase credentials |
 
@@ -534,8 +578,9 @@ reeb_jai_app/
     shelf_controller/                     ไม่ใช้งาน เก็บไว้เป็น reference
     WIRING_REFERENCE.md                   คู่มือการต่อสายอุปกรณ์
   assets/
+    index.html                            หน้ารวมเมนูหลักของ Web Admin
+    store-stock.html                      หน้า Web Admin จัดการร้านและสินค้า
     qr-barcode.html                       สร้าง QR Code และ Barcode สำหรับพิมพ์
-    store-stock.html                      จัดการสต๊อคสินค้า
     fix-store-ids.html                    แก้ไข store IDs
     payments.html                         ดูข้อมูล payment
     logo_reebjai.png                      โลโก้แอป
@@ -548,6 +593,7 @@ reeb_jai_app/
 | Layer | Technology | Version |
 |-------|-----------|---------|
 | Mobile App | Flutter + Dart | 3.x |
+| Web Admin | HTML5 + JavaScript + CSS | Standalone Web App |
 | State Management | Provider | 6.1.x |
 | Database | Cloud Firestore | 6.1.x |
 | Realtime | Firebase Realtime DB | 12.1.x |
