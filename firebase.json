@@ -1,0 +1,39 @@
+{
+  "hosting": {
+    "public": "assets",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "reejai-app",
+          "appId": "1:339967277439:android:eab2b7d98d0986ef83824a",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "reejai-app",
+          "configurations": {
+            "android": "1:339967277439:android:eab2b7d98d0986ef83824a",
+            "ios": "1:339967277439:ios:f48ebecce04e371e83824a",
+            "macos": "1:339967277439:ios:f48ebecce04e371e83824a",
+            "web": "1:339967277439:web:3ca691bf9232e09483824a",
+            "windows": "1:339967277439:web:ee78082f3c94ab7d83824a"
+          }
+        }
+      }
+    }
+  }
+}

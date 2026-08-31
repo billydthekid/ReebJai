@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REEBJAI — Fix Store IDs</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --red-border: #fecaca;
+      --bg: #f8fafc;
+      --white: #fff;
+      --text: #111827;
+      --text-2: #6b7280;
+      --text-3: #9ca3af;
+      --border: #e5e7eb;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 20px;
+    }
+
+    ion-icon {
+      pointer-events: none;
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .header .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 14px;
+    }
+
+    .header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      color: var(--text-2);
+      font-size: 13.5px;
+      margin-top: 6px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Before / After */
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .compare-box {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      line-height: 2;
+    }
+
+    .compare-box.bad {
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .compare-box.good {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .compare-label {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .bad-l {
+      color: #dc2626;
+    }
+
+    .good-l {
+      color: #16a34a;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .btn-primary {
+      background: var(--red);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #b91c1c;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-ghost {
+      background: var(--bg);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      background: var(--border);
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-danger-soft {
+      background: var(--red-light);
+      color: var(--red);
+      border: 1px solid var(--red-border);
+    }
+
+    /* Table */
+    .tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .tbl th {
+      padding: 10px 12px;
+      text-align: left;
+      background: var(--bg);
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tbl td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .tbl tr:last-child td {
+      border-bottom: none;
+    }
+
+    .tbl tr:hover td {
+      background: #fafafa;
+    }
+
+    .tbl-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .mono {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--text-2);
+    }
+
+    .badge {
+      padding: 2px 9px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .b-green {
+      background: #f0fdf4;
+      color: #16a34a;
+    }
+
+    .b-red {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
+    .b-orange {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    .b-blue {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .b-gray {
+      background: var(--bg);
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+
+    /* Alert boxes */
+    .alert {
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .alert ion-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .alert-warn {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #92400e;
+    }
+
+    .alert-success {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+
+    .alert-info {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+
+    .alert-danger {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    /* Log */
+    .log {
+      background: #0f172a;
+      color: #94a3b8;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      line-height: 1.9;
+      max-height: 280px;
+      overflow-y: auto;
+      margin-top: 14px;
+    }
+
+    .log .l-ok {
+      color: #4ade80;
+    }
+
+    .log .l-warn {
+      color: #fbbf24;
+    }
+
+    .log .l-err {
+      color: #f87171;
+    }
+
+    .log .l-info {
+      color: #38bdf8;
+    }
+
+    /* Progress */
+    .prog-wrap {
+      background: #e5e7eb;
+      border-radius: 20px;
+      height: 6px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .prog-fill {
+      height: 100%;
+      background: var(--success);
+      border-radius: 20px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    .spin {
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Input */
+    .inp {
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: 0.2s;
+      background: #fafafa;
+    }
+
+    .inp:focus {
+      border-color: var(--red);
+      background: white;
+      box-shadow: 0 0 0 3px var(--red-light);
+    }
+
+    @media (max-width:600px) {
+      .compare {
+        grid-template-columns: 1fr;
+      }
+
+      .compare-box+div {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="header">
+      <div class="eyebrow"><ion-icon name="construct-outline"></ion-icon> Fix Tool</div>
+      <h1>Fix Store Document IDs</h1>
+      <p>เปลี่ยน Document ID ของ stores จาก random string เป็น QR code เพื่อให้ดูใน Firebase Console ง่ายขึ้น</p>
+    </div>
+
+    <!-- Before / After -->
+    <div class="card">
+      <div class="compare">
+        <div class="compare-box bad">
+          <p class="compare-label bad-l"> ตอนนี้ (งงมาก)</p>
+          stores/<br>
+          &nbsp;&nbsp;<b>P6JdmJBh6TQdpjgkF1Za</b>/<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;name: "ReebJai"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;qr: "STORE1"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;products/ (subcollection)<br>
+          &nbsp;&nbsp;<b>ieHM71pTZhX2bTRtrfak</b>/<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;name: "สาขา 2"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;qr: "STORE2"
+        </div>
+        <div style="text-align:center; color:var(--text-3);">
+          <ion-icon name="arrow-forward-outline" style="font-size:28px;"></ion-icon>
+        </div>
+        <div class="compare-box good">
+          <p class="compare-label good-l"> หลัง fix (ชัดเจน)</p>
+          stores/<br>
+          &nbsp;&nbsp;<b>STORE1</b>/<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;name: "ReebJai"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;qr: "STORE1"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;products/ (subcollection)<br>
+          &nbsp;&nbsp;<b>STORE2</b>/<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;name: "สาขา 2"<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;qr: "STORE2"
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <div>Products ใน subcollection จะถูก copy ไปยัง ID ใหม่ด้วย — ข้อมูลไม่หาย</div>
+      </div>
+    </div>
+
+    <!-- Step 1: Scan -->
+    <div class="card">
+      <h2 class="card-title">
+        <span
+          style="background:var(--red);color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">1</span>
+        สแกน Stores ปัจจุบัน
+      </h2>
+
+      <button class="btn btn-ghost" id="btn-scan" onclick="scanStores()">
+        <ion-icon name="search-outline"></ion-icon> Scan Stores
+      </button>
+
+      <div id="scan-result" style="display:none; margin-top:16px;">
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Current Doc ID</th>
+                <th>Store Name</th>
+                <th>QR Code</th>
+                <th>Products</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="scan-tbody"></tbody>
+          </table>
+        </div>
+        <div id="scan-summary" style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;"></div>
+      </div>
+    </div>
+
+    <!-- Step 2: Fix -->
+    <div class="card" id="fix-card" style="display:none;">
+      <h2 class="card-title">
+        <span
+          style="background:var(--red);color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">2</span>
+        Fix — เปลี่ยน Document ID เป็น QR Code
+      </h2>
+
+      <div class="alert alert-warn">
+        <ion-icon name="warning-outline"></ion-icon>
+        <div>
+          Tool นี้จะ: <strong>(1)</strong> สร้าง document ใหม่ด้วย QR code เป็น ID
+          → <strong>(2)</strong> copy products subcollection ไปด้วย
+          → <strong>(3)</strong> ลบ document เก่าทิ้ง
+        </div>
+      </div>
+
+      <div id="fix-preview" class="tbl-wrap" style="margin-bottom:16px;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Old ID</th>
+              <th style="text-align:center;">→</th>
+              <th>New ID (QR)</th>
+              <th>Store Name</th>
+              <th>Products to copy</th>
+            </tr>
+          </thead>
+          <tbody id="fix-tbody"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-success" id="btn-fix" onclick="executefix()">
+          <ion-icon name="play-outline"></ion-icon> Execute Fix
+        </button>
+        <span style="font-size:13px; color:var(--text-2);">ใช้เวลาไม่นาน ขึ้นอยู่กับจำนวน products</span>
+      </div>
+
+      <div class="prog-wrap" id="prog-wrap" style="display:none;">
+        <div class="prog-fill" id="prog-fill"></div>
+      </div>
+
+      <div class="log" id="fix-log" style="display:none;"></div>
+    </div>
+
+    <!-- Step 3: Verify -->
+    <div class="card" id="verify-card" style="display:none;">
+      <h2 class="card-title">
+        <span
+          style="background:var(--success);color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">✓</span>
+        ยืนยัน — ตรวจสอบผลลัพธ์
+      </h2>
+      <div id="verify-result"></div>
+      <button class="btn btn-ghost" style="margin-top:14px;" onclick="scanStores()">
+        <ion-icon name="reload-outline"></ion-icon> Rescan to verify
+      </button>
+    </div>
+
+    <div style="text-align:center; margin-top:8px;">
+      <a href="qr-barcode.html"
+        style="color:var(--text-3);font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        <ion-icon name="arrow-back-outline" style="font-size:14px;"></ion-icon> Back to Admin
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    // ── Firebase ──────────────────────────────────
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCi3exltswU5194TQLwauQslswmPCayd7s',
+      authDomain: 'reejai-app.firebaseapp.com',
+      projectId: 'reejai-app',
+      storageBucket: 'reejai-app.firebasestorage.app',
+      messagingSenderId: '339967277439',
+      appId: '1:339967277439:web:3ca691bf9232e09483824a',
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ── State ─────────────────────────────────────
+    let storeData = []; // { docId, qr, name, address, data, products[], needsFix }
+
+    // ── Log helper ────────────────────────────────
+    function addLog(msg, type = 'info') {
+      const el = document.getElementById('fix-log');
+      el.style.display = 'block';
+      const cls = { info: 'l-info', ok: 'l-ok', warn: 'l-warn', err: 'l-err' }[type] || '';
+      el.innerHTML += `<div class="${cls}">${msg}</div>`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // ── Step 1: Scan ──────────────────────────────
+    async function scanStores() {
+      const btn = document.getElementById('btn-scan');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"><ion-icon name="reload-outline"></ion-icon></span> Scanning...';
+
+      try {
+        const snap = await db.collection('stores').get();
+        storeData = [];
+
+        for (const doc of snap.docs) {
+          const data = doc.data();
+          const qr = (data.qr || '').toUpperCase().trim();
+
+          // Count products in subcollection
+          const prodSnap = await db.collection('stores').doc(doc.id).collection('products').get();
+          const products = prodSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          // needsFix = docId !== qr
+          const needsFix = qr && doc.id !== qr;
+          // alreadyFixed = docId === qr
+          const alreadyFixed = qr && doc.id === qr;
+
+          storeData.push({
+            docId: doc.id,
+            qr,
+            name: data.name || '—',
+            address: data.address || '',
+            data,
+            products,
+            needsFix,
+            alreadyFixed,
+          });
+        }
+
+        renderScanResult();
+        renderFixPreview();
+      } catch (e) {
+        alert('Scan error: ' + e.message);
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<ion-icon name="search-outline"></ion-icon> Rescan';
+    }
+
+    function renderScanResult() {
+      const tbody = document.getElementById('scan-tbody');
+      tbody.innerHTML = storeData.map(s => {
+        const statusBadge = s.alreadyFixed
+          ? `<span class="badge b-green"><ion-icon name="checkmark-outline" style="font-size:11px;"></ion-icon> Already correct</span>`
+          : s.needsFix
+            ? `<span class="badge b-orange"><ion-icon name="warning-outline" style="font-size:11px;"></ion-icon> Needs fix</span>`
+            : `<span class="badge b-gray">No QR code</span>`;
+
+        return `<tr>
+        <td class="mono" style="font-size:11px;">${s.docId}</td>
+        <td style="font-weight:700;">${s.name}</td>
+        <td><span class="badge b-blue">${s.qr || '—'}</span></td>
+        <td>${s.products.length > 0
+            ? `<span class="badge b-green">${s.products.length} products</span>`
+            : `<span class="badge b-gray">empty</span>`}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+      }).join('');
+
+      const needsFix = storeData.filter(s => s.needsFix).length;
+      const fixed = storeData.filter(s => s.alreadyFixed).length;
+      const noQr = storeData.filter(s => !s.qr).length;
+
+      document.getElementById('scan-summary').innerHTML = `
+      <span class="badge b-orange" style="font-size:12px; padding:4px 12px;">${needsFix} stores need fixing</span>
+      <span class="badge b-green"  style="font-size:12px; padding:4px 12px;">${fixed} already correct</span>
+      ${noQr ? `<span class="badge b-gray" style="font-size:12px; padding:4px 12px;">${noQr} missing QR</span>` : ''}
+    `;
+
+      document.getElementById('scan-result').style.display = 'block';
+    }
+
+    function renderFixPreview() {
+      const toFix = storeData.filter(s => s.needsFix);
+      const fixCard = document.getElementById('fix-card');
+
+      if (!toFix.length) {
+        fixCard.style.display = 'none';
+        document.getElementById('verify-card').style.display = 'block';
+        document.getElementById('verify-result').innerHTML = `
+        <div class="alert alert-success">
+          <ion-icon name="checkmark-circle-outline"></ion-icon>
+          <div><strong>โครงสร้างถูกต้องแล้ว!</strong> ทุก store ใช้ QR code เป็น Document ID แล้ว — ดูใน Firebase Console ได้เลย</div>
+        </div>`;
+        return;
+      }
+
+      fixCard.style.display = 'block';
+
+      document.getElementById('fix-tbody').innerHTML = toFix.map(s => `
+      <tr>
+        <td class="mono" style="font-size:11px;">${s.docId.substring(0, 16)}...</td>
+        <td style="text-align:center; color:var(--text-3);"><ion-icon name="arrow-forward-outline"></ion-icon></td>
+        <td><strong style="color:var(--success);">${s.qr}</strong></td>
+        <td>${s.name}</td>
+        <td>${s.products.length > 0
+          ? `<span class="badge b-blue">${s.products.length} products</span>`
+          : `<span class="badge b-gray">empty</span>`}</td>
+      </tr>
+    `).join('');
+    }
+
+    // ── Step 2: Execute Fix ───────────────────────
+    async function executefix() {
+      const toFix = storeData.filter(s => s.needsFix);
+      if (!toFix.length) return;
+
+      const btn = document.getElementById('btn-fix');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"><ion-icon name="reload-outline"></ion-icon></span> Fixing...';
+
+      document.getElementById('fix-log').innerHTML = '';
+      document.getElementById('prog-wrap').style.display = 'block';
+
+      let done = 0;
+      const total = toFix.length;
+
+      for (const store of toFix) {
+        addLog(`Processing store: ${store.name} (${store.docId} → ${store.qr})`, 'info');
+
+        try {
+          // 1. Write new document with QR as ID
+          const newRef = db.collection('stores').doc(store.qr);
+          await newRef.set({
+            ...store.data,
+            storeId: store.qr,
+            qrCode: store.qr,
+            qr: store.qr,
+            fixedAt: new Date().toISOString(),
+          });
+          addLog(`  ✓ Created stores/${store.qr}`, 'ok');
+
+          // 2. Copy products subcollection
+          if (store.products.length > 0) {
+            addLog(`  Copying ${store.products.length} products...`, 'info');
+            const CHUNK = 490;
+            for (let i = 0; i < store.products.length; i += CHUNK) {
+              const batch = db.batch();
+              store.products.slice(i, i + CHUNK).forEach(p => {
+                const pid = p.barcode || p.id;
+                const ref = db.collection('stores').doc(store.qr).collection('products').doc(pid);
+                batch.set(ref, {
+                  ...p,
+                  storeId: store.qr
+                });
+              });
+              await batch.commit();
+            }
+            addLog(`  ✓ Copied ${store.products.length} products to stores/${store.qr}/products/`, 'ok');
+          }
+
+          // 3. Delete old products subcollection
+          if (store.products.length > 0) {
+            const oldBatch = db.batch();
+            store.products.forEach(p => {
+              const pid = p.barcode || p.id;
+              oldBatch.delete(db.collection('stores').doc(store.docId).collection('products').doc(pid));
+            });
+            await oldBatch.commit();
+            addLog(`  ✓ Deleted old products from stores/${store.docId}/products/`, 'ok');
+          }
+
+          // 4. Delete old store document
+          await db.collection('stores').doc(store.docId).delete();
+          addLog(`  ✓ Deleted old store document: ${store.docId}`, 'ok');
+          addLog(`   Done: ${store.name} is now at stores/${store.qr}`, 'ok');
+
+        } catch (e) {
+          addLog(`  ✗ Error on ${store.name}: ${e.message}`, 'err');
+        }
+
+        done++;
+        document.getElementById('prog-fill').style.width = (done / total * 100) + '%';
+      }
+
+      addLog('', 'info');
+      addLog('════════════════════════════════', 'info');
+      addLog(`Migration complete! ${done}/${total} stores fixed.`, 'ok');
+      addLog('Reload the Firebase Console to see the new structure.', 'warn');
+
+      btn.disabled = false;
+      btn.innerHTML = '<ion-icon name="play-outline"></ion-icon> Execute Fix';
+
+      // Show verify
+      document.getElementById('verify-card').style.display = 'block';
+      document.getElementById('verify-result').innerHTML = `
+      <div class="alert alert-success">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <div>
+          <strong>Fix เสร็จแล้ว!</strong> ${done} stores ถูกย้ายไปใช้ QR เป็น Document ID แล้ว<br>
+          <span style="font-size:13px;">กด Rescan ด้านล่างเพื่อตรวจสอบ หรือไปดูใน Firebase Console ได้เลย</span>
+        </div>
+      </div>`;
+
+      // Reload data
+      await scanStores();
+    }
+  </script>
+</body>
+
+</html>

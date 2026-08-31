@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REEBJAI Admin — Payment Verification</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    if (sessionStorage.getItem('reebjai_admin') !== 'true') window.location.href = 'login.html';
+  </script>
+  <style>
+    body { display: none; }
+  </style>
+  <style>
+    :root {
+      --red:#dc2626; --red-hover:#b91c1c; --red-light:#fef2f2; --red-border:#fecaca; --red-mid:#fee2e2;
+      --bg:#f8fafc; --white:#ffffff; --text:#111827; --text-2:#6b7280; --text-3:#9ca3af; --border:#e5e7eb;
+      --shadow-sm:0 1px 3px rgba(0,0,0,0.07); --shadow:0 4px 16px rgba(0,0,0,0.08); --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+      --radius-sm:8px; --radius:14px; --radius-lg: 20px; --success:#16a34a; --warning:#f59e0b;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+    ion-icon { pointer-events: none; }
+    .icon-sm { font-size: 14px; } .icon-md { font-size: 18px; } .icon-lg { font-size: 22px; }
+    .swal-font { font-family: 'Sarabun', sans-serif !important; }
+    
+    /* ── Nav ───────────────────────────────── */
+    .admin-nav {
+      background: var(--white); border-bottom: 1px solid var(--border); padding: 0 5%;
+      display: flex; align-items: center; justify-content: space-between; height: 68px;
+      position: sticky; top: 0; z-index: 1000; box-shadow: var(--shadow-sm);
+    }
+    .nav-left { display: flex; align-items: center; gap: 16px; }
+    .nav-logo-area { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo { width: 36px; height: 36px; background: var(--red); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; }
+    .nav-links { display: flex; gap: 8px; align-items: center; }
+    .nav-link {
+      padding: 9px 16px; border-radius: var(--radius-sm); color: var(--text-2);
+      text-decoration: none; font-size: 14px; font-weight: 600; transition: 0.2s;
+      display: flex; align-items: center; gap: 8px; border: 1.5px solid transparent;
+    }
+    .nav-link:hover { background: var(--bg); color: var(--red); }
+    .nav-link.active { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+    .logout-btn {
+      padding: 9px 16px; border-radius: var(--radius-sm); color: var(--red);
+      background: var(--red-light); border: 1.5px solid var(--red-border);
+      font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      font-family: inherit;
+    }
+    .logout-btn:hover { background: var(--red); color: white; border-color: var(--red); }
+    .hamburger-btn { display: none; background: none; border: none; color: var(--text); font-size: 28px; cursor: pointer; }
+
+    /* ── Mobile Sidebar ────────────────────── */
+    .mobile-sidebar { position: fixed; inset: 0; z-index: 2000; display: none; }
+    .mobile-sidebar.show { display: block; }
+    .ms-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .ms-panel {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 280px;
+      background: var(--white); box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+      padding: 40px 24px; display: flex; flex-direction: column; gap: 16px;
+      transform: translateX(100%); transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .mobile-sidebar.show .ms-panel { transform: translateX(0); }
+    .ms-title { font-size: 11px; font-weight: 800; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; }
+    .ms-divider { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+
+    /* ── Content Styles ────────────────────── */
+    .tab-content { padding: 32px 24px 48px; max-width: 1200px; margin: 0 auto; }
+    .section-header { margin-bottom: 24px; }
+    .section-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px; background: var(--red-light); color: var(--red);
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .section-header h2 { font-size: 20px; font-weight: 800; margin: 0 0 6px; }
+    .section-header p { font-size: 13.5px; color: var(--text-2); }
+
+    .stats-row { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 140px; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 24px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+    }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent-color, var(--border)); }
+    .stat-pending::before { --accent-color: var(--warning); }
+    .stat-paid::before { --accent-color: var(--success); }
+    .stat-rejected::before { --accent-color: var(--red); }
+    .stat-num { font-size: 36px; font-weight: 800; }
+    .stat-label { font-size: 12.5px; color: var(--text-2); font-weight: 500; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+    .stat-pending .stat-num { color: var(--warning); }
+    .stat-paid .stat-num { color: var(--success); }
+    .stat-rejected .stat-num { color: var(--red); }
+
+    .filter-tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-tab {
+      padding: 7px 18px; border: 1.5px solid var(--border); border-radius: 20px; cursor: pointer; font-family: inherit;
+      font-size: 13px; font-weight: 600; background: var(--white); color: var(--text-2); display: flex; align-items: center; gap: 5px;
+    }
+    .filter-tab:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+    .filter-tab.active { border-color: var(--red); background: var(--red); color: white; }
+    .filter-tab .badge { background: rgba(255,255,255,0.25); color: white; padding: 1px 7px; border-radius: 10px; font-size: 11px; }
+    .filter-tab:not(.active) .badge { background: var(--warning); color: white; }
+
+    .table-wrapper { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-sm); background: var(--white); }
+    .payment-table { width: 100%; border-collapse: collapse; }
+    .payment-table thead { background: var(--red); }
+    .payment-table th { color: white; padding: 13px 16px; text-align: left; font-size: 12.5px; font-weight: 700; text-transform: uppercase; }
+    .payment-table td { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 13.5px; vertical-align: middle; }
+    .payment-table tbody tr:last-child td { border-bottom: none; }
+    .payment-table tbody tr:hover { background: #fafafa; }
+    
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+    .status-pending_verification { background: #fff7ed; color: #c2410c; }
+    .status-pending { background: #f3f4f6; color: #6b7280; }
+    .status-paid { background: #f0fdf4; color: #15803d; }
+    .status-rejected { background: #fef2f2; color: #991b1b; }
+
+    .action-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; margin-right: 4px; transition: all 0.15s; }
+    .view-btn { background: #eff6ff; color: #1d4ed8; } .view-btn:hover { background: #dbeafe; }
+    .confirm-btn { background: #f0fdf4; color: #16a34a; } .confirm-btn:hover { background: #dcfce7; }
+    .reject-btn { background: #fef2f2; color: #dc2626; } .reject-btn:hover { background: #fee2e2; }
+
+    .empty-state { text-align: center; padding: 64px 20px; color: var(--text-3); }
+    .empty-state ion-icon { font-size: 56px; margin-bottom: 14px; display: block; margin-left: auto; margin-right: auto;}
+    .empty-state p { font-size: 14px; color: var(--text-2); }
+    
+    .loading { text-align: center; padding: 48px; color: var(--text-2); font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .spin { animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: white; border-radius: var(--radius-lg); padding: 28px 32px; max-width: 480px; width: 92vw; max-height: 82vh; overflow-y: auto; animation: modalIn 0.25s ease; box-shadow: var(--shadow-lg); }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .modal-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .modal .detail-row { display: flex; margin-bottom: 11px; align-items: flex-start; }
+    .modal .detail-label { width: 140px; color: var(--text-2); font-size: 12.5px; font-weight: 600; text-transform: uppercase; padding-top: 2px; }
+    .modal .detail-value { color: var(--text); font-size: 14px; font-weight: 500; font-family: 'Sarabun', sans-serif;}
+    .modal .detail-value.mono { font-family: 'DM Mono', monospace; }
+    .slip-img { width: 100%; max-height: 280px; object-fit: contain; border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 12px 0; background: var(--bg); }
+    .no-slip { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; padding: 16px 20px; border-radius: var(--radius-sm); text-align: center; font-size: 13.5px; margin: 12px 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .modal-divider { height: 1px; background: var(--border); margin: 16px 0; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions button { flex: 1; padding: 11px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; transition: all 0.18s; display: flex; align-items: center; justify-content: center; gap: 6px;}
+    .reject-reason { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; margin-top: 10px; outline: none; transition: 0.2s; resize: vertical;}
+    .reject-reason:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+    
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .btn-danger-soft { background: var(--red-light); color: var(--red); border: 1px solid var(--red-border); }
+    .btn-danger-soft:hover { background: #fee2e2; }
+
+    @media (max-width: 768px) {
+      .admin-nav { padding: 0 20px; }
+      .mobile-menu-btn { display: block; }
+      .nav-brand-text { display: none; }
+      .nav-links {
+        display: none; position: absolute; top: 64px; left: 0; right: 0; background: var(--white);
+        flex-direction: column; padding: 20px; gap: 10px; border-bottom: 1px solid var(--border);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      }
+      .nav-links.show { display: flex; }
+      .nav-btn, .logout-btn { width: 100%; justify-content: flex-start; padding: 12px 16px; }
+      
+      .stats-row { flex-direction: column; }
+      .table-wrapper { overflow-x: auto; }
+      .payment-table { min-width: 650px; }
+      
+      .modal { padding: 24px 20px; width: 95vw; }
+      .modal .detail-row { flex-direction: column; gap: 4px; border-bottom: 1px dotted var(--border); padding-bottom: 10px; }
+      .modal .detail-label { width: 100%; font-size: 11.5px; }
+      .modal-actions { flex-direction: column; }
+      .modal-actions button { width: 100%; }
+      .filter-tabs { display: flex; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 10px; scrollbar-width: none; }
+      .filter-tabs::-webkit-scrollbar { display: none; }
+      .filter-tab { flex-shrink: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="admin-nav hide-print">
+    <div class="nav-left">
+      <a href="qr-barcode.html" class="nav-logo-area">
+        <div class="nav-logo"><ion-icon name="shield-checkmark-outline"></ion-icon></div>
+        <div style="line-height:1.2;">
+          <p style="font-weight:800; font-size:16px; color:var(--text); letter-spacing:-0.4px;">REEBJAI</p>
+          <p style="font-weight:700; font-size:10px; color:var(--red); text-transform:uppercase;">Admin Panel</p>
+        </div>
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="qr-barcode.html" class="nav-link active">
+        <ion-icon name="apps-outline"></ion-icon> Stores
+      </a>
+      <button class="logout-btn" onclick="doLogout()">
+        <ion-icon name="log-out-outline"></ion-icon> Logout
+      </button>
+    </div>
+    <button class="hamburger-btn" onclick="toggleSidebar()">
+      <ion-icon name="menu-outline"></ion-icon>
+    </button>
+  </nav>
+
+  <!-- ── Mobile Sidebar ─────────────────────── -->
+  <div class="mobile-sidebar" id="mobile-sidebar">
+    <div class="ms-overlay" onclick="toggleSidebar()"></div>
+    <div class="ms-panel">
+      <p class="ms-title">Menu</p>
+      <a href="qr-barcode.html" class="nav-link active"><ion-icon name="apps-outline"></ion-icon> Manage Stores</a>
+      <div class="ms-divider">
+        <button class="logout-btn" style="width:100%; justify-content:center;" onclick="doLogout()">
+          <ion-icon name="log-out-outline"></ion-icon> Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content">
+    <div class="section-header">
+      <div class="section-eyebrow"><ion-icon name="card-outline" class="icon-sm"></ion-icon>Payments</div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+        <div>
+          <h2 style="font-size: 24px; font-weight: 800; margin: 0;">Payment Verification</h2>
+          <p style="margin: 4px 0 0;">ตรวจสอบและยืนยันการชำระเงินของลูกค้า</p>
+        </div>
+        <div style="background: var(--white); border: 1.5px solid var(--border); padding: 6px 14px; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 10px;">
+          <ion-icon name="business-outline" style="color: var(--text-2);"></ion-icon>
+          <select id="store-filter" style="border: none; outline: none; font-family: inherit; font-size: 14px; font-weight: 700; color: var(--text); background: transparent; cursor: pointer; min-width: 180px;" onchange="filterStore(this.value)">
+            <option value="all">ทุกสาขา (All Stores)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card stat-pending">
+        <div class="stat-num" id="stat-pending">-</div>
+        <div class="stat-label"><ion-icon name="time-outline" class="icon-sm"></ion-icon>รอตรวจสอบ</div>
+      </div>
+      <div class="stat-card stat-paid">
+        <div class="stat-num" id="stat-paid">-</div>
+        <div class="stat-label"><ion-icon name="checkmark-circle-outline" class="icon-sm"></ion-icon>ยืนยันแล้ว</div>
+      </div>
+      <div class="stat-card stat-rejected">
+        <div class="stat-num" id="stat-rejected">-</div>
+        <div class="stat-label"><ion-icon name="close-circle-outline" class="icon-sm"></ion-icon>ปฏิเสธ</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div class="filter-tabs" style="margin-bottom: 0;">
+        <button class="filter-tab active" data-filter="pending_verification" onclick="filterPayments('pending_verification', this)">
+          <ion-icon name="time-outline" class="icon-sm"></ion-icon>รออนุมัติ <span class="badge" id="pending-badge" style="display:none">0</span>
+        </button>
+        <button class="filter-tab" data-filter="paid" onclick="filterPayments('paid', this)">
+          <ion-icon name="checkmark-circle-outline" class="icon-sm"></ion-icon>อนุมัติแล้ว
+        </button>
+        <button class="filter-tab" data-filter="rejected" onclick="filterPayments('rejected', this)">
+          <ion-icon name="close-circle-outline" class="icon-sm"></ion-icon>ปฏิเสธ
+        </button>
+        <button class="filter-tab" data-filter="all" onclick="filterPayments('all', this)">
+          <ion-icon name="list-outline" class="icon-sm"></ion-icon>ทั้งหมด
+        </button>
+      </div>
+      <button class="btn" style="background:var(--success); color:white; font-size:12.5px; padding:8px 16px;" onclick="approveAllPending()">
+        <ion-icon name="checkmark-done-outline"></ion-icon> อนุมัติรายการทั้งหมด
+      </button>
+    </div>
+
+    <div id="payments-loading" class="loading"><ion-icon name="reload-outline" class="spin icon-md"></ion-icon>กำลังโหลดข้อมูล...</div>
+    <div id="payments-empty" class="empty-state" style="display:none">
+      <ion-icon name="folder-open-outline"></ion-icon><p id="empty-text">ไม่มีรายการ</p>
+    </div>
+
+    <div class="table-wrapper" id="table-wrapper" style="display:none">
+      <table class="payment-table">
+        <thead>
+          <tr>
+            <th>Order ID</th><th>Store</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="payment-tbody"></tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+      <button class="btn btn-danger-soft" onclick="deleteAllPayments()"><ion-icon name="trash-outline" class="icon-sm"></ion-icon> ลบประวัติการชำระเงินทั้งหมด</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-title"><ion-icon name="receipt-outline" style="color:#dc2626;font-size:22px;"></ion-icon>Payment Details</div>
+      <div id="modal-content"></div>
+      <div class="modal-actions" id="modal-actions"></div>
+    </div>
+  </div>
+
+  <script>
+    document.body.style.display = 'block';
+    let allPayments = [], allStores = [], currentFilter = 'pending_verification', currentStoreId = 'all', unsubscribe = null;
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCi3exltswU5194TQLwauQslswmPCayd7s', authDomain: 'reejai-app.firebaseapp.com',
+      projectId: 'reejai-app', storageBucket: 'reejai-app.firebasestorage.app',
+      messagingSenderId: '339967277439', appId: '1:339967277439:web:3ca691bf9232e09483824a',
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2800, timerProgressBar: true });
+    function showSuccess(title, text) { Toast.fire({ icon: 'success', title, text }); }
+    function showError(title, text) { Toast.fire({ icon: 'error', title, text }); }
+    function showWarning(title, text) { Toast.fire({ icon: 'warning', title, text }); }
+
+    async function confirmDialog(title, html, confirmText = 'ยืนยัน', isDanger = false) {
+      const result = await Swal.fire({
+        title, html, icon: isDanger ? 'warning' : 'question', showCancelButton: true,
+        confirmButtonText: confirmText, cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: isDanger ? '#dc2626' : '#16a34a', cancelButtonColor: '#6b7280', reverseButtons: true
+      });
+      return result.isConfirmed;
+    }
+
+    async function doLogout() {
+      const confirmed = await confirmDialog('ออกจากระบบ?', '', 'ออกจากระบบ', false);
+      if (!confirmed) return;
+      if (unsubscribe) unsubscribe();
+      sessionStorage.removeItem('reebjai_admin');
+      window.location.href = 'login.html';
+    }
+
+    function toggleSidebar() {
+      document.getElementById('mobile-sidebar').classList.toggle('show');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { 
+      // Read storeId from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const storeIdParam = urlParams.get('storeId');
+      if (storeIdParam) currentStoreId = storeIdParam;
+      
+      loadStores();
+      loadPayments(); 
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    async function loadStores() {
+      try {
+        const snap = await db.collection('stores').get();
+        allStores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const select = document.getElementById('store-filter');
+        allStores.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name || s.id;
+          if (s.id === currentStoreId) opt.selected = true;
+          select.appendChild(opt);
+        });
+      } catch (e) { console.error('Error loading stores:', e); }
+    }
+
+    function loadPayments() {
+      if (unsubscribe) unsubscribe();
+      const ld = document.getElementById('payments-loading'), wp = document.getElementById('table-wrapper'), em = document.getElementById('payments-empty');
+      ld.style.display = 'flex'; wp.style.display = 'none'; em.style.display = 'none';
+
+      unsubscribe = db.collection('payments').orderBy('createdAt', 'desc').onSnapshot(snap => {
+        allPayments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        updateStats();
+        renderPayments();
+        ld.style.display = 'none';
+      }, err => {
+        console.error(err);
+        ld.innerHTML = `<ion-icon name="warning-outline" class="icon-md"></ion-icon> ไม่สามารถโหลดข้อมูลได้: ${err.message}`;
+      });
+    }
+
+    function updateStats() {
+      let pending = 0, paid = 0, rejected = 0;
+      allPayments.forEach(p => {
+        if (p.status === 'pending_verification') pending++;
+        else if (p.status === 'paid') paid++;
+        else if (p.status === 'rejected') rejected++;
+      });
+      document.getElementById('stat-pending').textContent = pending;
+      document.getElementById('stat-paid').textContent = paid;
+      document.getElementById('stat-rejected').textContent = rejected;
+      const bzg = document.getElementById('pending-badge');
+      if (pending > 0) { bzg.style.display = 'inline-block'; bzg.textContent = pending; } else bzg.style.display = 'none';
+    }
+
+    function filterPayments(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderPayments();
+    }
+
+    function filterStore(storeId) {
+      currentStoreId = storeId;
+      renderPayments();
+    }
+
+    function renderPayments() {
+      const tbody = document.getElementById('payment-tbody'), wp = document.getElementById('table-wrapper'), em = document.getElementById('payments-empty');
+      tbody.innerHTML = '';
+      
+      let list = allPayments;
+      if (currentFilter !== 'all') list = list.filter(p => p.status === currentFilter);
+      if (currentStoreId !== 'all') list = list.filter(p => p.storeId === currentStoreId);
+
+      if (list.length === 0) {
+        wp.style.display = 'none'; em.style.display = 'block';
+        document.getElementById('empty-text').innerHTML = 'ไม่มีรายการในหมวดที่เลือก';
+        return;
+      }
+      wp.style.display = 'block'; em.style.display = 'none';
+
+      list.forEach(p => {
+        const tr = document.createElement('tr');
+        const st = p.status || 'unknown';
+        const stLbl = statusLabel(st);
+        const orderId = p.orderId || (p.paymentId ? p.paymentId.substring(0,8) : '-');
+        const store = allStores.find(s => s.id === p.storeId);
+        const storeName = store ? (store.name || store.id) : '-';
+        const amt = parseFloat(p.amount) || 0;
+        const dt = p.createdAt ? formatDate(p.createdAt) : '-';
+        const isPending = st === 'pending_verification';
+
+        tr.innerHTML = `
+          <td><strong>${orderId}</strong></td>
+          <td><span style="font-size:12px; font-weight:600; color:var(--text-2); background:var(--bg); padding:3px 8px; border-radius:4px; border:1px solid var(--border);">${storeName}</span></td>
+          <td style="color:var(--red); font-weight:700;">฿${amt.toFixed(2)}</td>
+          <td>${methodLabel(p.method)}</td>
+          <td><span class="status-badge status-${st}">${stLbl}</span></td>
+          <td style="color:var(--text-2);font-size:12.5px;">${dt}</td>
+          <td>
+            <button class="action-btn view-btn" onclick="viewDetail('${p.id}')"><ion-icon name="eye-outline" style="font-size:13px;"></ion-icon> ดู</button>
+            ${isPending ? `
+              <button class="action-btn confirm-btn" onclick="confirmPayment('${p.id}')"><ion-icon name="checkmark-circle-outline" style="font-size:13px;"></ion-icon> อนุมัติ</button>
+              <button class="action-btn reject-btn" onclick="rejectPayment('${p.id}')"><ion-icon name="close-circle-outline" style="font-size:13px;"></ion-icon> ปฏิเสธ</button>
+            ` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function viewDetail(id) {
+      const p = allPayments.find(x => x.id === id); if (!p) return;
+      const content = document.getElementById('modal-content'), actions = document.getElementById('modal-actions');
+      const amt = parseFloat(p.amount) || 0;
+      const tId = p.paymentId || p.id;
+      const isPending = p.status === 'pending_verification';
+      const orderId = p.orderId || tId.substring(0,8);
+      const slipHtml = (p.slipImageUrl && p.slipImageUrl.length > 20)
+        ? `<p style="font-weight:700;margin-top:16px;font-size:13.5px;display:flex;align-items:center;gap:6px;"><ion-icon name="attach-outline" style="font-size:16px;"></ion-icon> Transfer Slip</p>
+           <img src="${p.slipImageUrl}" class="slip-img" onerror="this.outerHTML='<div class=no-slip><ion-icon name=close-circle-outline style=font-size:16px></ion-icon> ไม่สามารถโหลดรูปสลิปได้</div>'">`
+        : `<div class="no-slip"><ion-icon name="camera-outline" style="font-size:16px;"></ion-icon> ไม่มีรูปสลิป — ลูกค้ายังไม่ได้อัปโหลด</div>`;
+
+      content.innerHTML = `
+        <div class="detail-row"><span class="detail-label">Order ID</span><span class="detail-value">${orderId}</span></div>
+        <div class="detail-row"><span class="detail-label">Payment ID</span><span class="detail-value mono" style="font-size:12px;color:var(--text-2);">${tId}</span></div>
+        <div class="modal-divider"></div>
+        <div class="detail-row"><span class="detail-label">Amount</span><span class="detail-value" style="font-size:24px;color:var(--red);font-weight:800;">฿${amt.toFixed(2)}</span></div>
+        <div class="detail-row"><span class="detail-label">Method</span><span class="detail-value">${methodLabel(p.method)}</span></div>
+        ${p.qrType ? `<div class="detail-row"><span class="detail-label">QR Type</span><span class="detail-value">${p.qrType}</span></div>` : ''}
+        <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="status-badge status-${p.status}">${statusLabel(p.status)}</span></span></div>
+        <div class="modal-divider"></div>
+        <div class="detail-row"><span class="detail-label">Created</span><span class="detail-value">${p.createdAt ? formatDate(p.createdAt) : '-'}</span></div>
+        ${p.customerMarkedPaidAt ? `<div class="detail-row"><span class="detail-label">Customer Marked</span><span class="detail-value">${formatDate(p.customerMarkedPaidAt)}</span></div>` : ''}
+        ${p.confirmedBy ? `<div class="detail-row"><span class="detail-label">Confirmed By</span><span class="detail-value">${p.confirmedBy}</span></div>` : ''}
+        ${p.confirmedAt ? `<div class="detail-row"><span class="detail-label">Confirmed At</span><span class="detail-value">${formatDate(p.confirmedAt)}</span></div>` : ''}
+        ${p.rejectedReason ? `<div class="detail-row"><span class="detail-label">Reject Reason</span><span class="detail-value" style="color:#991b1b;">${p.rejectedReason}</span></div>` : ''}
+        ${slipHtml}
+        ${isPending ? `<textarea class="reject-reason" id="modal-reject-reason" placeholder="เหตุผลที่ปฏิเสธ (ถ้ามี)" rows="2"></textarea>` : ''}
+      `;
+      actions.innerHTML = isPending ? `
+        <button style="background:var(--bg);color:var(--text-2);border:1.5px solid var(--border);" onclick="closeModal()"><ion-icon name="close-outline"></ion-icon> ปิด</button>
+        <button style="background:none;color:var(--red);border:1.5px solid var(--red-border);" onclick="deletePayment('${p.id}')" title="ลบ"><ion-icon name="trash-outline"></ion-icon></button>
+        <button style="background:var(--red-light);color:var(--red);border:1px solid var(--red-border);" onclick="rejectFromModal('${p.id}')"><ion-icon name="close-circle-outline"></ion-icon> ปฏิเสธ</button>
+        <button style="background:var(--success);color:white;" onclick="confirmPayment('${p.id}')"><ion-icon name="checkmark-circle-outline"></ion-icon> อนุมัติรายการ</button>
+      ` : `
+        <button style="background:var(--bg);color:var(--text-2);border:1.5px solid var(--border);" onclick="closeModal()"><ion-icon name="close-outline"></ion-icon> ปิด</button>
+        <button style="background:var(--red-light);color:var(--red);border:none;" onclick="deletePayment('${p.id}')"><ion-icon name="trash-outline"></ion-icon> ลบรายการ</button>
+      `;
+      document.getElementById('detail-modal').classList.add('show');
+    }
+
+    function closeModal() { document.getElementById('detail-modal').classList.remove('show'); }
+
+    async function confirmPayment(id) {
+      if (!(await confirmDialog('อนุมัติการชำระเงิน?', 'คุณมั่นใจว่าตรวจสอบยอดเงินและสลิปถูกต้องแล้ว?', 'อนุมัติ', false))) return;
+      try {
+        const now = new Date().toISOString();
+        await db.collection('payments').doc(id).update({ status: 'paid', confirmedBy: 'admin', confirmedAt: now, paidAt: now, updatedAt: now });
+        closeModal(); showSuccess('อนุมัติการชำระเงินสำเร็จ!');
+      } catch(e) { showError('ข้อผิดพลาด', e.message); }
+    }
+
+    async function approveAllPending() {
+      const pendingItems = allPayments.filter(p => p.status === 'pending_verification');
+      if (pendingItems.length === 0) return showWarning('ไม่มีรายการ', 'ไม่มีรายการที่รอการตรวจสอบในขณะนี้');
+
+      if (!(await confirmDialog('อนุมัติทั้งหมด?', `คุณต้องการอนุมัติรายการที่รอตรวจสอบทั้ง ${pendingItems.length} รายการใช่หรือไม่?`, 'อนุมัติทั้งหมด', false))) return;
+      
+      try {
+        const batch = db.batch();
+        const now = new Date().toISOString();
+        pendingItems.forEach(p => {
+          batch.update(db.collection('payments').doc(p.id), { status: 'paid', confirmedBy: 'admin', confirmedAt: now, paidAt: now, updatedAt: now });
+        });
+        await batch.commit();
+        showSuccess('อนุมัติรายการทั้งหมดสำเร็จ!');
+      } catch(e) { showError('ข้อผิดพลาด', e.message); }
+    }
+
+    async function rejectPayment(id) {
+      const { value, isConfirmed } = await Swal.fire({
+        title: 'ปฏิเสธการชำระเงิน', input: 'text', inputLabel: 'เหตุผลที่ปฏิเสธ', inputPlaceholder: 'เช่น: ยอดเงินไม่ตรง',
+        showCancelButton: true, confirmButtonText: 'ปฏิเสธ', cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', reverseButtons: true,
+        inputValidator: v => !v || !v.trim() ? 'กรุณาระบุเหตุผล' : null
+      });
+      if (!isConfirmed) return;
+      try {
+        const now = new Date().toISOString();
+        await db.collection('payments').doc(id).update({ status: 'rejected', confirmedBy: 'admin', confirmedAt: now, rejectedReason: value, updatedAt: now });
+        showError('ปฏิเสธการชำระเงินแล้ว');
+      } catch(e) { showError('ข้อผิดพลาด', e.message); }
+    }
+
+    async function rejectFromModal(id) {
+      const reasonInput = document.getElementById('modal-reject-reason');
+      const reason = reasonInput?.value?.trim();
+      if (!reason) {
+        reasonInput.focus(); reasonInput.style.borderColor = '#dc2626'; reasonInput.placeholder = 'กรุณาระบุเหตุผลก่อน!';
+        showWarning('กรุณาระบุเหตุผล', 'ต้องระบุเหตุผลก่อนดำเนินการ'); return;
+      }
+      try {
+        const now = new Date().toISOString();
+        await db.collection('payments').doc(id).update({ status: 'rejected', confirmedBy: 'admin', confirmedAt: now, rejectedReason: reason, updatedAt: now });
+        closeModal(); showError('ปฏิเสธการชำระเงินแล้ว');
+      } catch(e) { showError('ข้อผิดพลาด', e.message); }
+    }
+
+    async function deleteAllPayments() {
+      const res = await Swal.fire({
+        title: 'ล้างประวัติทั้งหมด?', html: `<b>คำเตือน:</b> การลบข้อมูลจะไม่สามารถกู้คืนได้<br>พิมพ์ <b>DELETE</b> เพื่อยืนยันการลบประวัติชำระเงินทั้งหมด`, input: 'text', icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#dc2626', confirmButtonText: 'ลบทั้งหมด', cancelButtonText: 'ยกเลิก', reverseButtons: true,
+        inputValidator: v => v !== 'DELETE' ? 'กรุณาพิมพ์ DELETE ให้ถูกต้อง' : null
+      });
+      if (res.isConfirmed) {
+        if (allPayments.length === 0) return showWarning('ไม่มีข้อมูล', 'ไม่มีประวัติให้ลบ');
+        try {
+          const snap = await db.collection('payments').get();
+          if (snap.empty) return showWarning('ไม่มีข้อมูลให้ลบ');
+          const batch = db.batch();
+          snap.docs.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+          showSuccess('ล้างประวัติสำเร็จ');
+        } catch (e) { showError('ข้อผิดพลาดในการลบ', e.message); }
+      }
+    }
+
+    async function deletePayment(id) {
+      if (!(await confirmDialog('ลบรายการ?', 'คุณต้องการลบรายการชำระเงินนี้ออกจากระบบใช่หรือไม่? <br><small style="color:var(--text-2);">การกระทำนี้ไม่สามารถย้อนกลับได้</small>', 'ลบรายการ', true))) return;
+      try {
+        await db.collection('payments').doc(id).delete();
+        closeModal(); showSuccess('ลบรายการสำเร็จ');
+      } catch (e) { showError('ข้อผิดพลาดในการลบ', e.message); }
+    }
+
+    function formatDate(ds) { try { return new Date(ds).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ds; } }
+    function methodLabel(m) { const mmap = { promptpay: 'PromptPay', transfer: 'โอนเงินบัญชี', cash: 'เงินสด', default: m }; return mmap[m] || mmap.default; }
+    function statusLabel(s) { const smap = { pending_verification: 'รอตรวจสอบ', pending: 'Pending', paid: 'ยืนยันแล้ว', rejected: 'ปฏิเสธ', default: s }; return smap[s] || smap.default; }
+  </script>
+</body>
+</html>

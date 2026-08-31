@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "339967277439",
+    "project_id": "reejai-app",
+    "storage_bucket": "reejai-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:339967277439:android:eab2b7d98d0986ef83824a",
+        "android_client_info": {
+          "package_name": "com.example.reeb_jai_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCd-WF48emiCdeOtH8IUSMRzUPOjgSbrcA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

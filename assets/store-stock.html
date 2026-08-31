@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REEBJAI — Store Inventory</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    if (sessionStorage.getItem('reebjai_admin') !== 'true') window.location.href = 'login.html';
+  </script>
+  <style>
+    body { display: none; }
+  </style>
+  <style>
+    :root {
+      --red:#dc2626; --red-hover:#b91c1c; --red-light:#fef2f2; --red-border:#fecaca; --red-mid:#fee2e2;
+      --bg:#f8fafc; --white:#ffffff; --text:#111827; --text-2:#6b7280; --text-3:#9ca3af; --border:#e5e7eb;
+      --shadow-sm:0 1px 3px rgba(0,0,0,0.07); --shadow:0 10px 25px -5px rgba(0,0,0,0.08);
+      --radius-sm:8px; --radius:14px; --success:#16a34a; --warning:#f59e0b;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Sarabun','Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text); font-size:15px; overflow-x:hidden; }
+    ion-icon { pointer-events:none; }
+
+    /* ── Nav ─────────────────────────────────── */
+    /* ── Nav ───────────────────────────────── */
+    .admin-nav {
+      background: var(--white); border-bottom: 1px solid var(--border); padding: 0 5%;
+      display: flex; align-items: center; justify-content: space-between; height: 68px;
+      position: sticky; top: 0; z-index: 1000; box-shadow: var(--shadow-sm);
+    }
+    .nav-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .nav-logo-area { display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+    .nav-logo { width: 36px; height: 36px; background: var(--red); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; }
+    .nav-back-btn {
+      display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+      border-radius: var(--radius-sm); background: var(--bg); border: 1.5px solid var(--border);
+      color: var(--text-2); font-weight: 700; font-size: 13px; text-decoration: none; transition: 0.2s; flex-shrink: 0;
+    }
+    .nav-back-btn:hover { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+    .nav-breadcrumb {
+      display: flex; align-items: center; gap: 8px; overflow: hidden;
+      font-size: 13px; font-weight: 700; color: var(--text-2); min-width: 0;
+    }
+    .nav-breadcrumb span.current { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-links { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .nav-link {
+      padding: 9px 16px; border-radius: var(--radius-sm); color: var(--text-2);
+      text-decoration: none; font-size: 14px; font-weight: 600; transition: 0.2s;
+      display: flex; align-items: center; gap: 8px; border: 1.5px solid transparent; white-space: nowrap;
+    }
+    .nav-link:hover { background: var(--bg); color: var(--red); }
+    .nav-link.active { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+    .logout-btn {
+      padding: 9px 16px; border-radius: var(--radius-sm); color: var(--red);
+      background: var(--red-light); border: 1.5px solid var(--red-border);
+      font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      font-family: inherit; white-space: nowrap;
+    }
+    .logout-btn:hover { background: var(--red); color: white; border-color: var(--red); }
+    .hamburger-btn { display: none; background: none; border: none; color: var(--text); font-size: 28px; cursor: pointer; }
+
+    /* ── Mobile Sidebar ────────────────────── */
+    .mobile-sidebar { position: fixed; inset: 0; z-index: 2000; display: none; }
+    .mobile-sidebar.show { display: block; }
+    .ms-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .ms-panel {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 280px;
+      background: var(--white); box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+      padding: 40px 24px; display: flex; flex-direction: column; gap: 16px;
+      transform: translateX(100%); transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .mobile-sidebar.show .ms-panel { transform: translateX(0); }
+    .ms-title { font-size: 11px; font-weight: 800; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; }
+    .ms-divider { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+
+    /* ── Store Hero ──────────────────────────── */
+    .store-hero {
+      background:var(--white); border-bottom:1px solid var(--border);
+      padding:20px 5%; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
+    }
+    .store-info { display:flex; align-items:center; gap:16px; }
+    .store-icon {
+      width:52px; height:52px; background:var(--red); color:white;
+      border-radius:12px; display:flex; align-items:center; justify-content:center;
+      font-size:22px; box-shadow:0 4px 12px rgba(220,38,38,0.2); flex-shrink:0;
+    }
+    .store-name { font-size:22px; font-weight:800; color:var(--text); letter-spacing:-0.5px; }
+    .store-meta { font-size:12px; color:var(--text-2); font-weight:600; text-transform:uppercase; margin-bottom:4px; }
+
+    /* ── Layout ──────────────────────────────── */
+    .main-content {
+      padding:32px 5%; max-width:1300px; margin:0 auto;
+      display:grid; grid-template-columns:340px 1fr; gap:28px; align-items:start;
+    }
+
+    /* ── Cards & Forms ───────────────────────── */
+    .card-panel {
+      background:var(--white); border:1px solid var(--border);
+      border-radius:var(--radius); padding:24px; margin-bottom:24px; box-shadow:var(--shadow-sm);
+    }
+    .card-title { font-size:15px; font-weight:800; margin-bottom:18px; display:flex; align-items:center; gap:8px; color:var(--text); }
+    .form-group { margin-bottom:14px; }
+    .form-label { display:block; font-size:11px; font-weight:800; color:var(--text-2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+    .form-input {
+      width:100%; padding:10px 14px; border:1.5px solid var(--border);
+      border-radius:var(--radius-sm); font-family:inherit; font-size:14px;
+      outline:none; transition:0.2s; background:#fafafa;
+    }
+    .form-input:focus { border-color:var(--red); background:white; box-shadow:0 0 0 3px var(--red-light); }
+    .form-input::placeholder { color:var(--text-3); }
+
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:10px 20px; border:none; border-radius:var(--radius-sm);
+      font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:0.2s;
+      white-space:nowrap;
+    }
+    .btn:disabled { opacity:0.6; pointer-events:none; }
+    .btn-primary   { background:var(--red); color:white; }
+    .btn-primary:hover { background:var(--red-hover); box-shadow:0 4px 12px rgba(220,38,38,0.15); }
+    .btn-success   { background:var(--success); color:white; }
+    .btn-ghost     { background:var(--bg); color:var(--text-2); border:1px solid var(--border); }
+    .btn-ghost:hover { background:var(--border); color:var(--text); }
+    .btn-danger-soft { background:var(--red-light); color:var(--red); border:1px solid var(--red-border); }
+    .btn-sm { padding:7px 14px; font-size:13px; }
+    .btn-icon-sm {
+      width:32px; height:32px; padding:0; border:none; border-radius:6px;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      font-size:15px; transition:0.2s;
+    }
+
+    /* ── Import Tabs ─────────────────────────── */
+    .import-tabs { display:flex; background:var(--bg); border-radius:8px; padding:4px; gap:4px; margin-bottom:16px; border:1px solid var(--border); }
+    .import-tab {
+      flex:1; padding:8px; border:none; border-radius:6px; cursor:pointer;
+      font-family:inherit; font-size:13px; font-weight:700; background:transparent; color:var(--text-2);
+      transition:0.18s;
+    }
+    .import-tab.active { background:var(--white); color:var(--red); box-shadow:var(--shadow-sm); }
+    .import-tab-content { display:none; }
+    .import-tab-content.active { display:block; }
+
+    /* ── Drop Zone ───────────────────────────── */
+    .drop-zone {
+      border:2px dashed var(--red-border); border-radius:var(--radius-sm);
+      background:var(--red-light); padding:28px 16px; text-align:center;
+      cursor:pointer; transition:0.2s; display:flex; flex-direction:column; align-items:center; gap:8px;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color:var(--red); background:var(--red-mid); }
+    .drop-zone p { color:var(--text-2); font-size:13px; font-weight:600; margin:0; }
+
+    /* ── Product Cards ───────────────────────── */
+    .product-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:20px; }
+    .product-card {
+      background:var(--white); border:1.5px solid var(--border); border-radius:var(--radius);
+      padding:20px; position:relative; transition:0.2s; box-shadow:var(--shadow-sm);
+    }
+    .product-card:hover { border-color:var(--red-border); transform:translateY(-3px); box-shadow:var(--shadow); }
+    .product-name { font-size:15px; font-weight:800; margin:8px 0 4px; line-height:1.3; }
+    .product-price { font-size:20px; font-weight:800; color:var(--red); margin:6px 0; letter-spacing:-0.5px; }
+    .product-barcode-text { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-3); margin-top:4px; }
+
+    .stock-tag { padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:5px; }
+    .tag-ok    { background:#f0fdf4; color:#16a34a; }
+    .tag-low   { background:#fff7ed; color:#c2410c; }
+    .tag-empty { background:#fef2f2; color:#dc2626; }
+
+    .cat-badge {
+      font-size:10px; font-weight:800; background:var(--bg); padding:3px 8px;
+      border-radius:10px; color:var(--text-2); text-transform:uppercase; display:inline-block;
+    }
+
+    .card-actions { position:absolute; top:12px; right:12px; display:flex; gap:6px; }
+
+    /* ── Edit Modal ──────────────────────────── */
+    .modal-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);
+      display:none; align-items:center; justify-content:center; z-index:1000;
+    }
+    .modal-overlay.show { display:flex; }
+    .modal {
+      background:var(--white); border-radius:16px; padding:28px 32px;
+      max-width:520px; width:94vw; max-height:88vh; overflow-y:auto;
+      box-shadow:0 24px 80px rgba(0,0,0,0.2);
+      animation:modalIn 0.25s ease;
+    }
+    @keyframes modalIn { from{opacity:0;transform:scale(0.95) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .modal-title { font-size:18px; font-weight:800; color:var(--text); margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+    .modal-divider { height:1px; background:var(--border); margin:16px 0; }
+    .modal-footer { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+
+    .spin { animation:spin 0.7s linear infinite; display:inline-block; }
+    @keyframes spin { to{ transform:rotate(360deg); } }
+
+    /* ── Import Preview Table ────────────────── */
+    .preview-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .preview-table th { padding:10px 12px; text-align:left; background:var(--bg); font-weight:700; font-size:11px; text-transform:uppercase; color:var(--text-2); border-bottom:1px solid var(--border); }
+    .preview-table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .preview-table tr:last-child td { border-bottom:none; }
+    .preview-table tr:hover td { background:#fafafa; }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width:1100px) {
+      .main-content { grid-template-columns:1fr; }
+    }
+    @media (max-width:768px) {
+      .nav-links, .nav-back-btn, .nav-breadcrumb { display:none; }
+      .hamburger-btn { display:block; }
+      .store-hero { padding:16px 4%; }
+      .store-name { font-size:18px; }
+      .main-content { padding:20px 4%; }
+      .card-panel { padding:18px; }
+    }
+
+    /* ── Print ───────────────────────────────── */
+    @media print {
+      .admin-nav, .store-hero, .sidebar-rail, .card-actions,
+      .btn, .hide-print { display:none !important; }
+      .main-content { grid-template-columns:1fr; padding:0; }
+      .product-card { break-inside:avoid; border:1px solid #ccc; box-shadow:none; }
+      body { background:white; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Navigation ─────────────────────────── -->
+  <nav class="admin-nav hide-print">
+    <div class="nav-left">
+      <a href="qr-barcode.html" class="nav-logo-area">
+        <div class="nav-logo"><ion-icon name="shield-checkmark-outline"></ion-icon></div>
+        <div style="line-height:1.2;">
+          <p style="font-weight:800; font-size:16px; color:var(--text); letter-spacing:-0.4px;">REEBJAI</p>
+          <p style="font-weight:700; font-size:10px; color:var(--red); text-transform:uppercase;">Admin Panel</p>
+        </div>
+      </a>
+      <a href="qr-barcode.html" class="nav-back-btn">
+        <ion-icon name="arrow-back-outline"></ion-icon> Stores
+      </a>
+      <div class="nav-breadcrumb">
+        <ion-icon name="chevron-forward-outline" style="font-size:12px;color:var(--text-3);"></ion-icon>
+        <span class="current" id="breadcrumb-name">...</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="qr-barcode.html" class="nav-link">
+        <ion-icon name="apps-outline"></ion-icon> Stores
+      </a>
+      <button class="logout-btn" onclick="doLogout()">
+        <ion-icon name="log-out-outline"></ion-icon> Logout
+      </button>
+    </div>
+    <button class="hamburger-btn" onclick="toggleSidebar()">
+      <ion-icon name="menu-outline"></ion-icon>
+    </button>
+  </nav>
+
+  <!-- ── Mobile Sidebar ─────────────────────── -->
+  <div class="mobile-sidebar" id="mobile-sidebar">
+    <div class="ms-overlay" onclick="toggleSidebar()"></div>
+    <div class="ms-panel">
+      <p class="ms-title">Menu</p>
+      <a href="qr-barcode.html" class="nav-link"><ion-icon name="apps-outline"></ion-icon> Manage Stores</a>
+      <a href="#" class="nav-link active"><ion-icon name="cube-outline"></ion-icon> <span id="ms-store-name">Inventory</span></a>
+      <a href="#" id="ms-payment-link" class="nav-link"><ion-icon name="card-outline"></ion-icon> Payment Logs</a>
+      <div class="ms-divider">
+        <button class="logout-btn" style="width:100%; justify-content:center;" onclick="doLogout()">
+          <ion-icon name="log-out-outline"></ion-icon> Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Store Hero ─────────────────────────── -->
+  <header class="store-hero hide-print">
+    <div class="store-info">
+      <div class="store-icon"><ion-icon name="storefront-outline"></ion-icon></div>
+      <div>
+        <p class="store-meta">Inventory Manager</p>
+        <h1 class="store-name" id="store-display-name">Loading...</h1>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div id="product-count-badge"
+        style="background:var(--white);border:1.5px solid var(--border);padding:8px 18px;border-radius:20px;font-weight:800;font-size:14px;color:var(--red);">
+        0 Products
+      </div>
+      <button class="btn btn-ghost btn-sm hide-print" onclick="window.print()">
+        <ion-icon name="print-outline"></ion-icon> Print
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Main Grid ──────────────────────────── -->
+  <div class="main-content">
+
+    <!-- Left: Add Form + Import -->
+    <div class="sidebar-rail hide-print">
+
+      <!-- Add Product Form -->
+      <div class="card-panel">
+        <h2 class="card-title">
+          <ion-icon name="add-circle-outline" style="color:var(--success);font-size:18px;"></ion-icon>
+          Add Product
+        </h2>
+
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-input" id="sp-category">
+            <option value="food_frozen">🍱 Frozen Food</option>
+            <option value="drink">🥤 Beverages</option>
+            <option value="bakery">🥪 Bakery & Milk</option>
+            <option value="snack">🥨 Snacks</option>
+            <option value="grocery">🛒 Household</option>
+            <option value="other">📦 Others</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Barcode *</label>
+          <input class="form-input" type="text" id="sp-barcode" placeholder="Scan or type barcode...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Product Name *</label>
+          <input class="form-input" type="text" id="sp-name" placeholder="e.g. Crab Fried Rice">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Price (฿) *</label>
+            <input class="form-input" type="number" id="sp-price" placeholder="0.00" step="0.5" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cost (฿)</label>
+            <input class="form-input" type="number" id="sp-cost" placeholder="0.00" step="0.5" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock *</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn btn-danger-soft btn-sm" onclick="adjustStock(-1)" style="padding:8px 14px;">−</button>
+            <input class="form-input" type="number" id="sp-stock" value="10" min="0" style="text-align:center;font-weight:700;">
+            <button type="button" class="btn btn-success btn-sm" onclick="adjustStock(1)" style="padding:8px 14px;">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">EXP Date</label>
+          <input class="form-input" type="date" id="sp-exp">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <select class="form-input" id="sp-unit">
+            <option value="piece">ชิ้น</option>
+            <option value="bottle">ขวด</option>
+            <option value="can">กระป๋อง</option>
+            <option value="box">กล่อง</option>
+            <option value="pack">แพ็ค</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" id="btn-sp-save" style="width:100%;margin-top:4px;" onclick="saveStoreProduct()">
+          <ion-icon name="save-outline"></ion-icon> Save Product
+        </button>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px;" onclick="clearSPForm()">
+          <ion-icon name="refresh-outline"></ion-icon> Clear
+        </button>
+      </div>
+
+      <!-- Import Stock -->
+      <div class="card-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h2 class="card-title" style="margin:0;">
+            <ion-icon name="cloud-upload-outline" style="color:var(--red);font-size:18px;"></ion-icon>
+            Bulk Import
+          </h2>
+          <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">
+            <ion-icon name="download-outline"></ion-icon> Template
+          </button>
+        </div>
+
+        <div class="import-tabs">
+          <button class="import-tab active" onclick="switchImportTab('file',this)">
+            <ion-icon name="document-text-outline"></ion-icon> File
+          </button>
+          <button class="import-tab" onclick="switchImportTab('paste',this)">
+            <ion-icon name="create-outline"></ion-icon> Paste
+          </button>
+        </div>
+
+        <!-- File Tab -->
+        <div id="sp-import-tab-file" class="import-tab-content active">
+          <div class="drop-zone" id="sp-drop-zone"
+            onclick="document.getElementById('sp-file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="handleDropFile(event)">
+            <ion-icon name="cloud-upload-outline" style="font-size:32px;color:var(--red-border);"></ion-icon>
+            <p>Click or drag CSV / XLSX here</p>
+          </div>
+          <input type="file" id="sp-file-input" accept=".csv,.xlsx,.xls" style="display:none"
+            onchange="handleImportFile(this.files[0])">
+        </div>
+
+        <!-- Paste Tab -->
+        <div id="sp-import-tab-paste" class="import-tab-content">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:12px;color:var(--text-2);">Paste CSV text below</span>
+            <button class="btn btn-ghost btn-sm" onclick="fillTemplate()">
+              <ion-icon name="copy-outline"></ion-icon> Fill Sample
+            </button>
+          </div>
+          <textarea id="sp-paste-input" class="form-input" rows="7" spellcheck="false"
+            placeholder="barcode,name,category,price,cost,stock,unit,exp&#10;8850999001234,Crab Rice,food_frozen,45,28,10,piece,2025-12-31"
+            style="font-family:'DM Mono',monospace;font-size:12px;resize:vertical;white-space:pre;"
+            oninput="onPasteChange()"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+            <span id="paste-counter" style="font-size:12px;color:var(--text-3);">0 rows</span>
+            <button class="btn btn-primary btn-sm" onclick="parsePastePreview()">
+              <ion-icon name="eye-outline"></ion-icon> Preview
+            </button>
+          </div>
+        </div>
+
+        <!-- Duplicate Mode -->
+        <div id="sp-import-options" style="display:none;margin-top:14px;padding:12px;background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);">
+          <p class="form-label" style="margin-bottom:10px;">If barcode already exists:</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+              <input type="radio" name="sp-dup-mode" value="add" checked style="accent-color:var(--red);"> Add to existing stock
+            </label>
+            <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+              <input type="radio" name="sp-dup-mode" value="replace" style="accent-color:var(--red);"> Replace all data
+            </label>
+            <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+              <input type="radio" name="sp-dup-mode" value="skip" style="accent-color:var(--red);"> Skip duplicates
+            </label>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Product List + Import Preview -->
+    <div class="product-listing">
+
+      <!-- Import Preview -->
+      <div id="sp-import-preview" class="card-panel" style="display:none;margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h2 class="card-title" style="margin:0;">
+            <ion-icon name="list-outline" style="color:var(--red);"></ion-icon>
+            Import Preview
+          </h2>
+          <div id="sp-import-badges" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+        </div>
+        <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th>Barcode</th><th>Name</th>
+                <th style="text-align:right;">Price</th><th style="text-align:right;">Stock</th>
+                <th style="text-align:center;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="sp-import-tbody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+          <button class="btn btn-ghost" onclick="clearImportPreview()">Cancel</button>
+          <button class="btn btn-success" id="btn-sp-import" onclick="executeImport()">
+            <ion-icon name="cloud-upload-outline"></ion-icon>
+            Import (<span id="sp-import-count">0</span> items)
+          </button>
+        </div>
+      </div>
+
+      <!-- Product List -->
+      <div class="card-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+          <h2 class="card-title" style="margin:0;">
+            <ion-icon name="list-outline" style="color:var(--red);font-size:18px;"></ion-icon>
+            Product Catalog
+          </h2>
+          <div style="display:flex;gap:8px;" class="hide-print">
+            <button class="btn btn-ghost btn-sm" onclick="loadStoreProducts()">
+              <ion-icon name="reload-outline"></ion-icon> Refresh
+            </button>
+            <button class="btn btn-danger-soft btn-sm" onclick="deleteAllProducts()">
+              <ion-icon name="trash-outline"></ion-icon> Clear All
+            </button>
+          </div>
+        </div>
+        <div class="product-grid" id="sp-barcode-cards"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Edit Product Modal ──────────────────── -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <div class="modal-title">
+        <ion-icon name="create-outline" style="color:var(--red);font-size:22px;"></ion-icon>
+        Edit Product
+      </div>
+
+      <input type="hidden" id="edit-barcode-key">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Product Name *</label>
+          <input class="form-input" type="text" id="edit-name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price (฿) *</label>
+          <input class="form-input" type="number" id="edit-price" min="0" step="0.5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cost (฿)</label>
+          <input class="form-input" type="number" id="edit-cost" min="0" step="0.5">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Stock *</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn btn-danger-soft btn-sm" onclick="adjEditStock(-1)" style="padding:8px 14px;">−</button>
+            <input class="form-input" type="number" id="edit-stock" min="0" style="text-align:center;font-weight:700;">
+            <button type="button" class="btn btn-success btn-sm" onclick="adjEditStock(1)" style="padding:8px 14px;">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-input" id="edit-category">
+            <option value="food_frozen">🍱 Frozen Food</option>
+            <option value="drink">🥤 Beverages</option>
+            <option value="bakery">🥪 Bakery & Milk</option>
+            <option value="snack">🥨 Snacks</option>
+            <option value="grocery">🛒 Household</option>
+            <option value="other">📦 Others</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <select class="form-input" id="edit-unit">
+            <option value="piece">ชิ้น</option>
+            <option value="bottle">ขวด</option>
+            <option value="can">กระป๋อง</option>
+            <option value="box">กล่อง</option>
+            <option value="pack">แพ็ค</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">EXP Date</label>
+          <input class="form-input" type="date" id="edit-exp">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Promo / Note</label>
+          <input class="form-input" type="text" id="edit-promo" placeholder="e.g. Buy 2 Get 1">
+        </div>
+      </div>
+
+      <div class="modal-divider"></div>
+      <div style="background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:8px;">
+        <ion-icon name="barcode-outline" style="color:var(--text-3);font-size:16px;"></ion-icon>
+        <span style="font-size:12px;color:var(--text-2);">Barcode:</span>
+        <span id="edit-barcode-display" style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--text);"></span>
+        <span style="font-size:11px;color:var(--text-3);margin-left:auto;">read-only</span>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeEditModal()">
+          <ion-icon name="close-outline"></ion-icon> Cancel
+        </button>
+        <button class="btn btn-success" id="btn-save-edit" onclick="saveEdit()">
+          <ion-icon name="save-outline"></ion-icon> Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ══════════════════════════════════════════════
+    //  AUTH & URL PARAMS
+    // ══════════════════════════════════════════════
+    document.body.style.display = 'block';
+
+    const urlParams       = new URLSearchParams(window.location.search);
+    const activeStoreId   = urlParams.get('storeId');
+    const activeStoreName = decodeURIComponent(urlParams.get('storeName') || activeStoreId || '');
+
+    if (!activeStoreId) window.location.href = 'qr-barcode.html';
+
+    // ══════════════════════════════════════════════
+    //  FIREBASE  — ALL PATHS USE SUBCOLLECTION
+    // ══════════════════════════════════════════════
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCi3exltswU5194TQLwauQslswmPCayd7s',
+      authDomain: 'reejai-app.firebaseapp.com',
+      projectId: 'reejai-app',
+      storageBucket: 'reejai-app.firebasestorage.app',
+      messagingSenderId: '339967277439',
+      appId: '1:339967277439:web:3ca691bf9232e09483824a',
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ✅ PER-STORE subcollection — NEVER touches global products
+    const storeRef = db.collection('stores').doc(activeStoreId).collection('products');
+
+    // ══════════════════════════════════════════════
+    //  SWEETALERT HELPERS
+    // ══════════════════════════════════════════════
+    const Toast = Swal.mixin({
+      toast:true, position:'bottom-end', showConfirmButton:false, timer:2800, timerProgressBar:true,
+    });
+    const showSuccess = (t,x) => Toast.fire({icon:'success', title:t, text:x});
+    const showError   = (t,x) => Toast.fire({icon:'error',   title:t, text:x});
+    const showWarning = (t,x) => Toast.fire({icon:'warning', title:t, text:x});
+
+    async function confirmDialog(title, text, confirmBtnText, isDanger = false) {
+      const { isConfirmed } = await Swal.fire({
+        title, html: text, icon: isDanger ? 'warning' : 'question',
+        showCancelButton: true, confirmButtonText: confirmBtnText, cancelButtonText: 'Cancel',
+        confirmButtonColor: isDanger ? '#dc2626' : '#16a34a', cancelButtonColor: '#6b7280',
+        reverseButtons: true,
+      });
+      return isConfirmed;
+    }
+
+    // ══════════════════════════════════════════════
+    //  INIT
+    // ══════════════════════════════════════════════
+    let storeProducts = [];
+    let _importRows   = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const name = activeStoreName || activeStoreId;
+      document.getElementById('store-display-name').textContent = name || 'Store Inventory';
+      document.getElementById('breadcrumb-name').textContent = name || 'Store';
+      document.getElementById('ms-payment-link').href = `payments.html?storeId=${activeStoreId}`;
+      document.getElementById('ms-store-name').textContent      = name;
+      document.title = `${name} — REEBJAI Admin`;
+      loadStoreProducts();
+    });
+
+    // ══════════════════════════════════════════════
+    //  SIDEBAR / LOGOUT
+    // ══════════════════════════════════════════════
+    function toggleSidebar() {
+      document.getElementById('mobile-sidebar').classList.toggle('show');
+    }
+
+    async function doLogout() {
+      if (await confirmDialog('Logout?','Are you sure?','Logout',true)) {
+        sessionStorage.removeItem('reebjai_admin');
+        window.location.href = 'login.html';
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    //  LOAD & RENDER PRODUCTS
+    // ══════════════════════════════════════════════
+    async function loadStoreProducts() {
+      try {
+        const snap = await storeRef.get();
+        storeProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        document.getElementById('product-count-badge').textContent = `${storeProducts.length} Products`;
+        renderCards();
+      } catch(e) { showError('Load Failed', e.message); }
+    }
+
+    function renderCards() {
+      const container = document.getElementById('sp-barcode-cards');
+      if (!storeProducts.length) {
+        container.innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:60px 20px;border:2px dashed var(--border);border-radius:var(--radius);">
+            <ion-icon name="cube-outline" style="font-size:48px;color:var(--text-3);margin-bottom:16px;display:block;"></ion-icon>
+            <p style="color:var(--text-2);font-weight:700;">No products in this store</p>
+            <p style="color:var(--text-3);font-size:13px;margin-top:4px;">Add a product or import a CSV file.</p>
+          </div>`;
+        return;
+      }
+
+      const CAT = { food_frozen:'🍱 Frozen', drink:'🥤 Drink', bakery:'🥪 Bakery', snack:'🥨 Snack', grocery:'🛒 Home', other:'📦 Other' };
+      const stockTag = s => !s||s===0 ? 'tag-empty' : s<=5 ? 'tag-low' : 'tag-ok';
+      const stockIcon = s => !s||s===0 ? 'close-circle-outline' : s<=5 ? 'warning-outline' : 'checkmark-circle-outline';
+
+      container.innerHTML = storeProducts.map((p, i) => `
+        <div class="product-card">
+          <div class="card-actions hide-print">
+            <button class="btn-icon-sm" style="background:#eff6ff;color:#1d4ed8;" onclick="openEditModal('${p.barcode}')" title="Edit">
+              <ion-icon name="create-outline"></ion-icon>
+            </button>
+            <button class="btn-icon-sm" style="background:var(--red-light);color:var(--red);" onclick="deleteProduct('${p.barcode}','${(p.name||'').replace(/'/g,'\\\'')}')" title="Delete">
+              <ion-icon name="trash-outline"></ion-icon>
+            </button>
+          </div>
+
+          <span class="cat-badge">${CAT[p.category] || p.category || 'Other'}</span>
+          <h3 class="product-name">${p.name}</h3>
+          <p class="product-price">฿${Number(p.price).toLocaleString()}</p>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span class="stock-tag ${stockTag(p.stock)}">
+              <ion-icon name="${stockIcon(p.stock)}" style="font-size:12px;"></ion-icon>
+              ${p.stock || 0} in stock
+            </span>
+            <span class="product-barcode-text">${p.barcode}</span>
+          </div>
+
+          ${p.exp ? `<p style="font-size:11px;color:var(--text-3);margin-bottom:10px;display:flex;align-items:center;gap:4px;"><ion-icon name="calendar-outline" style="font-size:12px;"></ion-icon>EXP: ${p.exp}</p>` : ''}
+
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center;">
+            <svg id="bc-${i}" style="width:100%;max-height:50px;"></svg>
+          </div>
+        </div>
+      `).join('');
+
+      // Render barcodes
+      storeProducts.forEach((p, i) => {
+        setTimeout(() => {
+          try {
+            JsBarcode(`#bc-${i}`, p.barcode, {
+              format:'CODE128', width:1.2, height:40,
+              displayValue:true, fontSize:10, margin:2,
+              lineColor:'#111827', background:'transparent',
+            });
+          } catch(e) { console.warn('Barcode error', p.barcode, e.message); }
+        }, 60);
+      });
+    }
+
+    // ══════════════════════════════════════════════
+    //  ADD PRODUCT
+    // ══════════════════════════════════════════════
+    function adjustStock(delta) {
+      const el = document.getElementById('sp-stock');
+      el.value = Math.max(0, (parseInt(el.value)||0) + delta);
+    }
+
+    function clearSPForm() {
+      document.getElementById('sp-barcode').value  = '';
+      document.getElementById('sp-name').value     = '';
+      document.getElementById('sp-price').value    = '';
+      document.getElementById('sp-cost').value     = '';
+      document.getElementById('sp-stock').value    = '10';
+      document.getElementById('sp-exp').value      = '';
+    }
+
+    async function saveStoreProduct() {
+      const barcode  = document.getElementById('sp-barcode').value.trim();
+      const name     = document.getElementById('sp-name').value.trim();
+      const price    = parseFloat(document.getElementById('sp-price').value);
+      const cost     = parseFloat(document.getElementById('sp-cost').value) || 0;
+      const stock    = parseInt(document.getElementById('sp-stock').value)  || 0;
+      const category = document.getElementById('sp-category').value;
+      const unit     = document.getElementById('sp-unit').value;
+      const exp      = document.getElementById('sp-exp').value;
+
+      if (!barcode) { showWarning('Missing Barcode','Please enter a barcode.'); return; }
+      if (!name)    { showWarning('Missing Name','Please enter a product name.'); return; }
+      if (isNaN(price) || price < 0) { showWarning('Invalid Price','Please enter a valid price.'); return; }
+
+      // Duplicate barcode within THIS store only
+      const existing = storeProducts.find(p => p.barcode === barcode);
+      if (existing) {
+        const res = await Swal.fire({
+          title: 'Barcode Already Exists',
+          html: `<b>"${existing.name}"</b> already uses barcode <code>${barcode}</code>.<br>What would you like to do?`,
+          icon: 'warning', showDenyButton: true, showCancelButton: true,
+          confirmButtonText: '+ Add to Stock', denyButtonText: 'Overwrite', cancelButtonText: 'Cancel',
+          confirmButtonColor: '#f59e0b', denyButtonColor: '#4f46e5', cancelButtonColor: '#6b7280',
+        });
+        if (res.isConfirmed) {
+          await storeRef.doc(barcode).update({ stock: (existing.stock||0) + stock, updatedAt: new Date().toISOString() });
+          showSuccess(`Stock updated`, `+${stock} added to "${existing.name}"`);
+          clearSPForm(); loadStoreProducts(); return;
+        } else if (!res.isDenied) return;
+      }
+
+      const btn = document.getElementById('btn-sp-save');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"><ion-icon name="reload-outline"></ion-icon></span>';
+
+      try {
+        // ✅ Write ONLY to this store's subcollection
+        await storeRef.doc(barcode).set({
+          productId: barcode,
+          name, barcode, price, cost, stock, category, unit, exp,
+          storeId: activeStoreId,
+          createdAt: new Date().toISOString(),
+        });
+        showSuccess(`"${name}" saved!`);
+        clearSPForm();
+        loadStoreProducts();
+      } catch(e) { showError('Save Failed', e.message); }
+
+      btn.disabled = false;
+      btn.innerHTML = '<ion-icon name="save-outline"></ion-icon> Save Product';
+    }
+
+    // ══════════════════════════════════════════════
+    //  DELETE
+    // ══════════════════════════════════════════════
+    async function deleteProduct(barcode, name) {
+      if (!await confirmDialog(`Delete "${name}"?`, 'Removes from this store only.', 'Delete', true)) return;
+      try {
+        await storeRef.doc(barcode).delete();
+        showSuccess(`"${name}" deleted.`);
+        loadStoreProducts();
+      } catch(e) { showError('Error', e.message); }
+    }
+
+    async function deleteAllProducts() {
+      if (!storeProducts.length) { showWarning('Nothing to delete'); return; }
+      const res = await Swal.fire({
+        title: 'Clear All Products?',
+        html: `Delete all <b>${storeProducts.length}</b> products from this store?<br>Type <b>DELETE</b> to confirm.`,
+        input: 'text', inputPlaceholder: 'DELETE', icon: 'warning',
+        showCancelButton: true, confirmButtonText: 'Clear', cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280', reverseButtons: true,
+        inputValidator: v => v !== 'DELETE' ? 'Type DELETE exactly' : undefined,
+      });
+      if (!res.isConfirmed) return;
+      try {
+        const batch = db.batch();
+        storeProducts.forEach(p => batch.delete(storeRef.doc(p.barcode)));
+        await batch.commit();
+        showSuccess('Inventory cleared.');
+        loadStoreProducts();
+      } catch(e) { showError('Error', e.message); }
+    }
+
+    // ══════════════════════════════════════════════
+    //  EDIT MODAL
+    // ══════════════════════════════════════════════
+    function openEditModal(barcode) {
+      const p = storeProducts.find(x => x.barcode === barcode);
+      if (!p) return;
+
+      document.getElementById('edit-barcode-key').value     = barcode;
+      document.getElementById('edit-barcode-display').textContent = barcode;
+      document.getElementById('edit-name').value            = p.name    || '';
+      document.getElementById('edit-price').value           = p.price   || '';
+      document.getElementById('edit-cost').value            = p.cost    || '';
+      document.getElementById('edit-stock').value           = p.stock   ?? 0;
+      document.getElementById('edit-exp').value             = p.exp     || '';
+      document.getElementById('edit-promo').value           = p.promo   || '';
+      if (p.category) document.getElementById('edit-category').value = p.category;
+      if (p.unit)     document.getElementById('edit-unit').value     = p.unit;
+
+      document.getElementById('edit-modal').classList.add('show');
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.remove('show');
+    }
+
+    function adjEditStock(delta) {
+      const el = document.getElementById('edit-stock');
+      el.value = Math.max(0, (parseInt(el.value)||0) + delta);
+    }
+
+    async function saveEdit() {
+      const barcode  = document.getElementById('edit-barcode-key').value;
+      const name     = document.getElementById('edit-name').value.trim();
+      const price    = parseFloat(document.getElementById('edit-price').value);
+      const cost     = parseFloat(document.getElementById('edit-cost').value) || 0;
+      const stock    = parseInt(document.getElementById('edit-stock').value)  || 0;
+      const category = document.getElementById('edit-category').value;
+      const unit     = document.getElementById('edit-unit').value;
+      const exp      = document.getElementById('edit-exp').value;
+      const promo    = document.getElementById('edit-promo').value.trim();
+
+      if (!name)                     { showWarning('Missing Name',''); return; }
+      if (isNaN(price) || price < 0) { showWarning('Invalid Price',''); return; }
+
+      const btn = document.getElementById('btn-save-edit');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"><ion-icon name="reload-outline"></ion-icon></span>';
+
+      try {
+        // ✅ Update ONLY in this store's subcollection
+        await storeRef.doc(barcode).update({
+          productId: barcode,
+          name, price, cost, stock, category, unit, exp, promo,
+          updatedAt: new Date().toISOString(),
+        });
+        showSuccess(`"${name}" updated!`);
+        closeEditModal();
+        loadStoreProducts();
+      } catch(e) { showError('Update Failed', e.message); }
+
+      btn.disabled = false;
+      btn.innerHTML = '<ion-icon name="save-outline"></ion-icon> Save Changes';
+    }
+
+    // Close modal on backdrop / Escape
+    document.getElementById('edit-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('edit-modal')) closeEditModal();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeEditModal();
+    });
+
+    // ══════════════════════════════════════════════
+    //  IMPORT — FILE
+    // ══════════════════════════════════════════════
+    function switchImportTab(tab, el) {
+      document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.import-tab-content').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById(`sp-import-tab-${tab}`).classList.add('active');
+    }
+
+    function handleDropFile(e) {
+      e.preventDefault();
+      document.getElementById('sp-drop-zone').classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) handleImportFile(file);
+    }
+
+    async function handleImportFile(file) {
+      if (!file) return;
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.csv')) {
+        Papa.parse(file, { header:true, skipEmptyLines:true,
+          complete: r => buildPreview(r.data),
+        });
+      } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+        const buf = await file.arrayBuffer();
+        const wb  = XLSX.read(buf);
+        buildPreview(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'' }));
+      } else {
+        showWarning('Unsupported file', 'Please use .csv or .xlsx');
+      }
+    }
+
+    // ── IMPORT — PASTE ────────────────────────────
+    const SAMPLE_CSV = `barcode,name,category,price,cost,stock,unit,exp
+8850999001234,Crab Fried Rice,food_frozen,45,28,10,piece,2025-12-31
+8851234567890,Mineral Water 600ml,drink,10,6,24,bottle,
+8852345678901,Crispy Bread Soy,snack,15,9,15,pack,2025-10-15`;
+
+    function fillTemplate() {
+      document.getElementById('sp-paste-input').value = SAMPLE_CSV;
+      onPasteChange();
+    }
+
+    function onPasteChange() {
+      const lines = document.getElementById('sp-paste-input').value.trim().split('\n').filter(l=>l.trim());
+      const count = Math.max(0, lines.length - 1);
+      const el = document.getElementById('paste-counter');
+      el.textContent = count ? `${count} rows — click Preview` : '0 rows';
+      el.style.color = count ? 'var(--red)' : 'var(--text-3)';
+    }
+
+    function parsePastePreview() {
+      const raw = document.getElementById('sp-paste-input').value.trim();
+      if (!raw) { showWarning('Empty','Paste some CSV text first.'); return; }
+      const result = Papa.parse(raw, { header:true, skipEmptyLines:true, transformHeader: h=>h.trim() });
+      const hasBarcode = (result.meta.fields||[]).some(h => ['barcode','Barcode','รหัสบาร์โค้ด'].includes(h));
+      if (!hasBarcode) { showError('Missing header','First line must include a "barcode" column.'); return; }
+      buildPreview(result.data);
+    }
+
+    // ── NORMALIZE ROW ─────────────────────────────
+    function normalizeRow(r) {
+      return {
+        barcode:  String(r.barcode  || r['Barcode']  || r['รหัสบาร์โค้ด'] || '').trim(),
+        name:     String(r.name     || r['Name']     || r['ชื่อสินค้า']   || '').trim(),
+        price:    parseFloat(r.price    || r['Price']    || r['ราคา']   || 0),
+        cost:     parseFloat(r.cost     || r['Cost']     || r['ต้นทุน'] || 0),
+        stock:    parseInt(r.stock    || r['Stock']    || r['สต๊อก'] || 0),
+        category: String(r.category || r['Category'] || 'other').trim(),
+        unit:     String(r.unit     || r['Unit']     || 'piece').trim(),
+        exp:      String(r.exp      || r['EXP']      || r['วันหมดอายุ'] || '').trim(),
+      };
+    }
+
+    function validateRow(r) {
+      const e = [];
+      if (!r.barcode)             e.push('no barcode');
+      if (r.barcode.length < 4)   e.push('barcode too short');
+      if (!r.name)                e.push('no name');
+      if (isNaN(r.price)||r.price<0) e.push('bad price');
+      return e;
+    }
+
+    function buildPreview(rawRows) {
+      const rows = rawRows.map(normalizeRow);
+      let valid=0, errors=0, dups=0;
+
+      document.getElementById('sp-import-tbody').innerHTML = rows.map((r,i) => {
+        const errs  = validateRow(r);
+        const isDup = storeProducts.some(p => p.barcode === r.barcode);
+        const ok    = !errs.length;
+        if (ok) valid++; else errors++;
+        if (isDup && ok) dups++;
+
+        const rowBg  = !ok ? 'background:#fff5f5' : isDup ? 'background:#fffbeb' : '';
+        const status = !ok
+          ? `<span style="color:var(--red);font-size:11px;font-weight:700;">${errs.join(', ')}</span>`
+          : isDup
+            ? `<span style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">Dup</span>`
+            : `<span style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">New</span>`;
+
+        return `<tr style="${rowBg}">
+          <td style="font-family:'DM Mono',monospace;font-size:12px;">${r.barcode}</td>
+          <td style="font-weight:600;">${r.name||'—'}</td>
+          <td style="text-align:right;">฿${isNaN(r.price)?'—':r.price}</td>
+          <td style="text-align:right;">${r.stock}</td>
+          <td style="text-align:center;">${status}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('sp-import-badges').innerHTML = `
+        <span style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;">✓ ${valid}</span>
+        ${errors ? `<span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;">✗ ${errors}</span>` : ''}
+        ${dups   ? `<span style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;">⚠ ${dups} dup</span>` : ''}
+      `;
+
+      _importRows = rows.filter(r => !validateRow(r).length);
+      document.getElementById('sp-import-count').textContent = valid;
+      document.getElementById('sp-import-options').style.display = 'block';
+      document.getElementById('sp-import-preview').style.display = 'block';
+
+      // Scroll to preview
+      setTimeout(() => document.getElementById('sp-import-preview').scrollIntoView({behavior:'smooth',block:'start'}), 100);
+    }
+
+    function clearImportPreview() {
+      _importRows = [];
+      document.getElementById('sp-import-preview').style.display = 'none';
+      document.getElementById('sp-import-options').style.display = 'none';
+      document.getElementById('sp-file-input').value = '';
+      document.getElementById('sp-paste-input').value = '';
+      onPasteChange();
+    }
+
+    // ── EXECUTE IMPORT ────────────────────────────
+    async function executeImport() {
+      if (!_importRows.length) return;
+      const dupMode = document.querySelector('input[name="sp-dup-mode"]:checked').value;
+
+      const confirmed = await Swal.fire({
+        title: `Import ${_importRows.length} products?`,
+        html: `Into store: <b>${activeStoreName}</b><br>Duplicate mode: <b>${{add:'Add Stock',replace:'Overwrite',skip:'Skip'}[dupMode]}</b>`,
+        icon: 'question', showCancelButton: true,
+        confirmButtonText: 'Import', cancelButtonText: 'Cancel',
+        confirmButtonColor: '#16a34a', cancelButtonColor: '#6b7280', reverseButtons: true,
+      });
+      if (!confirmed.isConfirmed) return;
+
+      const btn = document.getElementById('btn-sp-import');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"><ion-icon name="reload-outline"></ion-icon></span>';
+
+      let success=0, skipped=0;
+      const CHUNK = 490; // Firestore batch limit = 500
+
+      for (let i = 0; i < _importRows.length; i += CHUNK) {
+        const batch = db.batch();
+        for (const r of _importRows.slice(i, i+CHUNK)) {
+          const ref      = storeRef.doc(r.barcode);
+          const existing = storeProducts.find(p => p.barcode === r.barcode);
+
+          if (existing) {
+            if (dupMode === 'skip')    { skipped++; continue; }
+            if (dupMode === 'add')     batch.update(ref, { stock: (existing.stock||0)+r.stock, updatedAt: new Date().toISOString() });
+            if (dupMode === 'replace') batch.set(ref, { ...r, productId: r.barcode, storeId: activeStoreId, updatedAt: new Date().toISOString() });
+          } else {
+            // ✅ New product written ONLY to this store's subcollection
+            batch.set(ref, { ...r, productId: r.barcode, storeId: activeStoreId, createdAt: new Date().toISOString() });
+          }
+          success++;
+        }
+        await batch.commit();
+      }
+
+      await Swal.fire({
+        title: 'Import Complete!',
+        html: `✅ <b>${success}</b> saved${skipped ? `<br>⏭ <b>${skipped}</b> skipped` : ''}`,
+        icon: 'success', confirmButtonColor: '#16a34a',
+      });
+
+      clearImportPreview();
+      loadStoreProducts();
+
+      btn.disabled = false;
+      btn.innerHTML = '<ion-icon name="cloud-upload-outline"></ion-icon> Import (<span id="sp-import-count">0</span> items)';
+    }
+
+    // ── DOWNLOAD TEMPLATE ─────────────────────────
+    function downloadTemplate() {
+      const BOM = '\uFEFF';
+      const csv = `barcode,name,category,price,cost,stock,unit,exp\n8850999001234,Crab Fried Rice,food_frozen,45,28,10,piece,2025-12-31\n8851234567890,Water 600ml,drink,10,6,24,bottle,\n8852345678901,Crispy Bread,snack,15,9,15,pack,2025-10-15`;
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([BOM+csv], {type:'text/csv;charset=utf-8;'})),
+        download: `template_${activeStoreId}.csv`,
+      });
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  </script>
+</body>
+</html>

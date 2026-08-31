@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REEBJAI Admin — QR & Barcodes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    if (sessionStorage.getItem('reebjai_admin') !== 'true') {
+      window.location.href = 'login.html';
+    }
+  </script>
+  <style>
+    body { display: none; } /* Hide body by default */
+  </style>
+
+  <style>
+    :root {
+      --red:#dc2626; --red-hover:#b91c1c; --red-light:#fef2f2; --red-border:#fecaca; --red-mid:#fee2e2;
+      --bg:#f8fafc; --white:#ffffff; --text:#111827; --text-2:#6b7280; --text-3:#9ca3af; --border:#e5e7eb;
+      --shadow-sm:0 1px 3px rgba(0,0,0,0.07); --shadow:0 10px 25px -5px rgba(0,0,0,0.08);
+      --radius-sm:8px; --radius:14px; --success:#16a34a; --warning:#f59e0b;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Sarabun', 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+    ion-icon { pointer-events: none; }
+
+    /* ── Nav ───────────────────────────────── */
+    .admin-nav {
+      background: var(--white); border-bottom: 1px solid var(--border); padding: 0 5%;
+      display: flex; align-items: center; justify-content: space-between; height: 68px;
+      position: sticky; top: 0; z-index: 1000; box-shadow: var(--shadow-sm);
+    }
+    .nav-left { display: flex; align-items: center; gap: 16px; }
+    .nav-logo-area { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo { width: 36px; height: 36px; background: var(--red); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; }
+    .nav-links { display: flex; gap: 8px; align-items: center; }
+    .nav-link {
+      padding: 9px 16px; border-radius: var(--radius-sm); color: var(--text-2);
+      text-decoration: none; font-size: 14px; font-weight: 600; transition: 0.2s;
+      display: flex; align-items: center; gap: 8px; border: 1.5px solid transparent;
+    }
+    .nav-link:hover { background: var(--bg); color: var(--red); }
+    .nav-link.active { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+    .logout-btn {
+      padding: 9px 16px; border-radius: var(--radius-sm); color: var(--red);
+      background: var(--red-light); border: 1.5px solid var(--red-border);
+      font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      font-family: inherit;
+    }
+    .logout-btn:hover { background: var(--red); color: white; border-color: var(--red); }
+    .hamburger-btn { display: none; background: none; border: none; color: var(--text); font-size: 28px; cursor: pointer; }
+
+    /* ── Mobile Sidebar ────────────────────── */
+    .mobile-sidebar { position: fixed; inset: 0; z-index: 2000; display: none; }
+    .mobile-sidebar.show { display: block; }
+    .ms-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .ms-panel {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 280px;
+      background: var(--white); box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+      padding: 40px 24px; display: flex; flex-direction: column; gap: 16px;
+      transform: translateX(100%); transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .mobile-sidebar.show .ms-panel { transform: translateX(0); }
+    .ms-title { font-size: 11px; font-weight: 800; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; }
+    .ms-divider { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+
+    /* ── Main ──────────────────────────────── */
+    .main-container { padding: 40px 5%; max-width: 1300px; margin: 0 auto; }
+
+    .step-bar {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
+      background: var(--white); border: 1px solid var(--border);
+      padding: 12px 24px; border-radius: 30px; width: fit-content;
+    }
+    .step-item { display: flex; align-items: center; gap: 10px; }
+    .step-circle {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--border); color: var(--text-3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800;
+    }
+    .step-circle.active { background: var(--red); color: white; }
+    .step-circle.done { background: var(--success); color: white; }
+    .step-label { font-size: 13px; font-weight: 700; color: var(--text-2); }
+    .step-label.active { color: var(--text); }
+    .step-label.done { color: var(--success); }
+    .step-conn { width: 40px; height: 2px; background: var(--border); }
+    .step-conn.done { background: var(--success); }
+
+    .section-header { margin-bottom: 24px; }
+    .section-eyebrow {
+      font-size: 12px; font-weight: 800; color: var(--red);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block;
+    }
+    .section-header h2 { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+
+    .card-panel {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; margin-bottom: 32px; box-shadow: var(--shadow-sm);
+    }
+    .card-title { font-size: 16px; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+
+    .store-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end; }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-label { font-size: 12px; font-weight: 700; color: var(--text-2); text-transform: uppercase; }
+    .form-input {
+      padding: 11px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 14px; outline: none; transition: 0.2s; background: #fafafa; width: 100%;
+    }
+    .form-input:focus { border-color: var(--red); background: white; box-shadow: 0 0 0 4px var(--red-light); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 24px; border: none; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.6; pointer-events: none; }
+    .btn-primary { background: var(--red); color: white; }
+    .btn-primary:hover { background: var(--red-hover); box-shadow: 0 4px 12px rgba(220,38,38,0.2); }
+    .btn-ghost { background: var(--bg); color: var(--text-2); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+
+    /* ── Store Cards ───────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+    .store-card {
+      background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius);
+      padding: 28px; position: relative; transition: 0.3s cubic-bezier(0.16,1,0.3,1); box-shadow: var(--shadow-sm);
+    }
+    .store-card:hover { border-color: var(--red-border); transform: translateY(-5px); box-shadow: var(--shadow); }
+    .store-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .store-card p  { font-size: 13px; color: var(--text-2); margin-bottom: 20px; }
+
+    .qr-box {
+      background: var(--bg); border-radius: var(--radius-sm); padding: 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      border: 1px solid var(--border); margin-bottom: 20px;
+    }
+    .qr-canvas { background: white; padding: 8px; border-radius: 8px; }
+    .qr-code-text {
+      font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700;
+      color: var(--red); background: var(--red-light); padding: 4px 10px; border-radius: 6px;
+    }
+
+    .store-actions { display: flex; gap: 10px; }
+    .store-btn {
+      flex: 1; padding: 10px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 700;
+      text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;
+    }
+    .btn-manage { background: var(--red); color: white; border: 1.5px solid var(--red); }
+    .btn-manage:hover { background: var(--red-hover); border-color: var(--red-hover); transform: translateY(-2px); }
+    
+    .btn-payment { background: var(--white); color: var(--text-2); border: 1.5px solid var(--border); }
+    .btn-payment:hover { background: var(--bg); color: #1d4ed8; border-color: #3b82f6; transform: translateY(-2px); }
+
+    .delete-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: #fff1f2; color: #e11d48; border: 1.5px solid #fecdd3; border-radius: var(--radius-sm); transition: 0.2s; cursor: pointer; }
+    .delete-btn:hover { background: #e11d48; color: white; border-color: #e11d48; }
+
+    .spin { animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ────────────────────────── */
+    @media (max-width: 900px) {
+      .store-form { grid-template-columns: 1fr 1fr; }
+      .store-form > button { grid-column: 1 / -1; }
+    }
+    @media (max-width: 600px) {
+      .store-form { grid-template-columns: 1fr; }
+      .main-container { padding: 24px 4%; }
+      .step-bar { padding: 10px 16px; }
+    }
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hamburger-btn { display: block; }
+      .section-header h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Navigation ─────────────────────────── -->
+  <nav class="admin-nav">
+    <div class="nav-left">
+      <a href="qr-barcode.html" class="nav-logo-area">
+        <div class="nav-logo"><ion-icon name="shield-checkmark-outline"></ion-icon></div>
+        <div style="line-height:1.2;">
+          <p style="font-weight:800; font-size:16px; color:var(--text); letter-spacing:-0.4px;">REEBJAI</p>
+          <p style="font-weight:700; font-size:10px; color:var(--red); text-transform:uppercase;">Admin Panel</p>
+        </div>
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="qr-barcode.html" class="nav-link active">
+        <ion-icon name="apps-outline"></ion-icon> Stores
+      </a>
+      <button class="logout-btn" onclick="doLogout()">
+        <ion-icon name="log-out-outline"></ion-icon> Logout
+      </button>
+    </div>
+    <button class="hamburger-btn" onclick="toggleSidebar()">
+      <ion-icon name="menu-outline"></ion-icon>
+    </button>
+  </nav>
+
+  <!-- ── Mobile Sidebar ─────────────────────── -->
+  <div class="mobile-sidebar" id="mobile-sidebar">
+    <div class="ms-overlay" onclick="toggleSidebar()"></div>
+    <div class="ms-panel">
+      <p class="ms-title">Menu</p>
+      <a href="qr-barcode.html" class="nav-link active"><ion-icon name="apps-outline"></ion-icon> Manage Stores</a>
+      <a href="payments.html" class="nav-link"><ion-icon name="card-outline"></ion-icon> Payment Logs</a>
+      <div class="ms-divider">
+        <button class="logout-btn" style="width:100%; justify-content:center;" onclick="doLogout()">
+          <ion-icon name="log-out-outline"></ion-icon> Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main ───────────────────────────────── -->
+  <div class="main-container">
+
+    <!-- Step Bar -->
+    <div class="step-bar" id="step-bar">
+      <div class="step-item">
+        <div class="step-circle active" id="s1-circle">1</div>
+        <span class="step-label active" id="s1-label">Create Store</span>
+      </div>
+      <div class="step-conn" id="s1-conn"></div>
+      <div class="step-item">
+        <div class="step-circle" id="s2-circle">2</div>
+        <span class="step-label" id="s2-label">Manage Inventory</span>
+      </div>
+    </div>
+
+    <!-- Add Store Form -->
+    <div class="card-panel">
+      <h3 class="card-title">
+        <ion-icon name="add-circle-outline" style="color:var(--red)"></ion-icon>
+        Add New Store
+      </h3>
+      <div class="store-form">
+        <div class="form-group">
+          <label class="form-label">Store Name *</label>
+          <input class="form-input" type="text" id="new-store-name" placeholder="e.g. REEBJAI Siam Branch">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address *</label>
+          <input class="form-input" type="text" id="new-store-address" placeholder="e.g. Floor 1, Unit 123">
+        </div>
+        <div class="form-group">
+          <label class="form-label">QR Code ID *</label>
+          <input class="form-input" type="text" id="new-store-qr" placeholder="e.g. STORE_01"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
+        </div>
+        <button class="btn btn-primary" onclick="addNewStore()" id="btn-add-store">
+          <ion-icon name="save-outline"></ion-icon> Save Store
+        </button>
+      </div>
+    </div>
+
+    <!-- Store List -->
+    <div class="section-header">
+      <span class="section-eyebrow">Active Branches</span>
+      <h2>Your Stores (<span id="store-count">0</span>)</h2>
+    </div>
+
+    <div class="cards" id="qr-cards">
+      <div style="grid-column:1/-1; text-align:center; padding:60px; border:2px dashed var(--border); border-radius:var(--radius); color:var(--text-3);">
+        <ion-icon name="reload-outline" style="font-size:32px; animation:spin 1s linear infinite;"></ion-icon>
+        <p style="margin-top:12px;">Loading stores...</p>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:center; margin-top:40px;">
+      <button class="btn btn-ghost" style="font-size:12px; color:var(--text-3);" onclick="deleteAllStores()">
+        <ion-icon name="trash-outline"></ion-icon> Delete All Stores
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    // Auth check passed, show body
+    document.body.style.display = 'block';
+
+    // ── Firebase ──────────────────────────────
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCi3exltswU5194TQLwauQslswmPCayd7s',
+      authDomain: 'reejai-app.firebaseapp.com',
+      projectId: 'reejai-app',
+      storageBucket: 'reejai-app.firebasestorage.app',
+      messagingSenderId: '339967277439',
+      appId: '1:339967277439:web:3ca691bf9232e09483824a',
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ── SweetAlert Helpers ────────────────────
+    const Toast = Swal.mixin({
+      toast: true, position: 'bottom-end',
+      showConfirmButton: false, timer: 2800, timerProgressBar: true,
+    });
+    const showSuccess = (t, x) => Toast.fire({ icon: 'success', title: t, text: x });
+    const showError   = (t, x) => Toast.fire({ icon: 'error',   title: t, text: x });
+    const showWarning = (t, x) => Toast.fire({ icon: 'warning', title: t, text: x });
+
+    async function confirmDialog(title, text, confirmBtnText, isDanger = false) {
+      const { isConfirmed } = await Swal.fire({
+        title, text, icon: isDanger ? 'warning' : 'question',
+        showCancelButton: true, confirmButtonText: confirmBtnText, cancelButtonText: 'Cancel',
+        confirmButtonColor: isDanger ? '#dc2626' : '#16a34a', cancelButtonColor: '#6b7280',
+        reverseButtons: true,
+      });
+      return isConfirmed;
+    }
+
+    // ── Sidebar ───────────────────────────────
+    function toggleSidebar() {
+      document.getElementById('mobile-sidebar').classList.toggle('show');
+    }
+
+    // ── Logout ────────────────────────────────
+    async function doLogout() {
+      if (await confirmDialog('Logout?', 'Are you sure you want to sign out?', 'Logout', true)) {
+        sessionStorage.removeItem('reebjai_admin');
+        window.location.href = 'login.html';
+      }
+    }
+
+    // ── State ─────────────────────────────────
+    let dbStores = [];
+
+    // ── Init ──────────────────────────────────
+    document.addEventListener('DOMContentLoaded', loadStores);
+
+    // ── Step Bar ──────────────────────────────
+    function updateStepBar() {
+      const hasStores = dbStores.length > 0;
+      document.getElementById('s1-circle').className = hasStores ? 'step-circle done' : 'step-circle active';
+      document.getElementById('s1-label').className  = hasStores ? 'step-label done'  : 'step-label active';
+      document.getElementById('s1-conn').className   = hasStores ? 'step-conn done'   : 'step-conn';
+      document.getElementById('s2-circle').className = hasStores ? 'step-circle active' : 'step-circle';
+      document.getElementById('s2-label').className  = hasStores ? 'step-label active'  : 'step-label';
+      if (hasStores) {
+        document.getElementById('s1-circle').innerHTML = '<ion-icon name="checkmark-outline" style="font-size:14px;"></ion-icon>';
+      } else {
+        document.getElementById('s1-circle').textContent = '1';
+      }
+    }
+
+    // ── Load Stores ───────────────────────────
+    async function loadStores() {
+      try {
+        const snap = await db.collection('stores').orderBy('createdAt', 'desc').get();
+        dbStores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {
+        // orderBy might fail without index — fallback
+        try {
+          const snap = await db.collection('stores').get();
+          dbStores = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch(e2) { showError('Load Error', e2.message); return; }
+      }
+      document.getElementById('store-count').textContent = dbStores.length;
+      updateStepBar();
+      renderStoreCards();
+    }
+
+    // ── Render Cards ──────────────────────────
+    function renderStoreCards() {
+      const container = document.getElementById('qr-cards');
+      if (!dbStores.length) {
+        container.innerHTML = `
+          <div style="grid-column:1/-1; text-align:center; padding:60px; border:2px dashed var(--border); border-radius:var(--radius); color:var(--text-3);">
+            <ion-icon name="storefront-outline" style="font-size:48px; margin-bottom:16px; display:block;"></ion-icon>
+            <p style="font-size:15px; font-weight:700;">No stores yet</p>
+            <p style="font-size:13px; margin-top:4px;">Add your first branch above.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = dbStores.map((store, i) => `
+        <div class="store-card">
+          <div class="qr-box">
+            <div id="qr-${i}" class="qr-canvas"></div>
+            <div class="qr-code-text">${store.qr || store.id}</div>
+          </div>
+          <h3>${store.name}</h3>
+          <p>${store.address}</p>
+          <div class="store-actions">
+          <a href="store-stock.html?storeId=${encodeURIComponent(store.id)}" class="store-btn btn-manage">
+            <ion-icon name="cube-outline"></ion-icon> Manage Inventory
+          </a>
+          <a href="payments.html?storeId=${encodeURIComponent(store.id)}" class="store-btn btn-payment">
+            <ion-icon name="card-outline"></ion-icon> Payments
+          </a>
+          <button class="delete-btn" onclick="deleteStore('${store.id}','${store.name.replace(/'/g,'\\\'')}')"><ion-icon name="trash-outline" class="icon-md"></ion-icon></button>
+        </div>
+        </div>
+      `).join('');
+
+      // Render QR codes after DOM update
+      dbStores.forEach((store, i) => {
+        setTimeout(() => {
+          const el = document.getElementById(`qr-${i}`);
+          if (!el) return;
+          try {
+            new QRCode(el, {
+              text: store.qr || store.id,
+              width: 140, height: 140,
+              colorDark: '#111827', colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.H,
+            });
+          } catch(e) { console.error('QR error:', e); }
+        }, 80);
+      });
+    }
+
+ // ── Add Store ─────────────────────────────
+    async function addNewStore() {
+      const name    = document.getElementById('new-store-name').value.trim();
+      const address = document.getElementById('new-store-address').value.trim();
+      const qr      = document.getElementById('new-store-qr').value.trim().toUpperCase();
+
+      if (!name || !address || !qr) {
+        showWarning('Missing Fields', 'Please fill in Store Name, Address and QR Code ID.');
+        return;
+      }
+      if (!/^[A-Z0-9_]+$/.test(qr)) {
+        showWarning('Invalid QR ID', 'Use only A-Z, 0-9 and _ characters.');
+        return;
+      }
+      if (dbStores.some(s => s.qr === qr || s.id === qr)) {
+        showError('Duplicate ID', `QR Code "${qr}" is already in use.`);
+        return;
+      }
+
+      const btn = document.getElementById('btn-add-store');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"><ion-icon name="reload-outline"></ion-icon></span> Saving...';
+
+      try {
+        // Document ID = "ชื่อสาขา_QR" เช่น "store_123" → ดูใน Firebase Console รู้ทันทีว่าสาขาไหน
+        
+        const safeName = name.replace(/[^a-zA-Z0-9ก-๙]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        // const docId = `${safeName}_${qr}`;
+        const docId = safeName;
+
+        await db.collection('stores').doc(docId).set({
+          storeId: docId,
+          name, 
+          address, 
+          qrCode: qr,
+          qr: qr, // Legacy compatibility
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        });
+
+        ['new-store-name', 'new-store-address', 'new-store-qr'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        showSuccess(`Store "${name}" created!`);
+        await loadStores();
+      } catch (e) {
+        showError('Save Failed', e.message);
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<ion-icon name="save-outline"></ion-icon> Save Store';
+    }
+
+    // ── Delete Store ──────────────────────────
+    async function deleteStore(id, name) {
+      if (!await confirmDialog(`Delete "${name}"?`, 'This removes the store. Products inside will remain in subcollection.', 'Delete', true)) return;
+      try {
+        await db.collection('stores').doc(id).delete();
+        showSuccess(`"${name}" deleted.`);
+        await loadStores();
+      } catch(e) { showError('Delete Failed', e.message); }
+    }
+
+    // ── Delete All Stores ─────────────────────
+    async function deleteAllStores() {
+      if (!dbStores.length) { showWarning('No stores to delete'); return; }
+      const res = await Swal.fire({
+        title: 'Delete All Stores?',
+        html: '<span style="color:#dc2626;font-weight:700;">This cannot be undone.</span><br>Type <b>DELETE</b> to confirm.',
+        input: 'text', inputPlaceholder: 'DELETE',
+        icon: 'warning', showCancelButton: true,
+        confirmButtonText: 'Delete All', cancelButtonText: 'Cancel',
+        confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280',
+        reverseButtons: true,
+        inputValidator: v => v !== 'DELETE' ? 'Type DELETE exactly' : undefined,
+      });
+      if (!res.isConfirmed) return;
+      try {
+        const batch = db.batch();
+        dbStores.forEach(s => batch.delete(db.collection('stores').doc(s.id)));
+        await batch.commit();
+        showSuccess('All stores deleted.');
+        await loadStores();
+      } catch(e) { showError('Error', e.message); }
+    }
+  </script>
+</body>
+</html>
